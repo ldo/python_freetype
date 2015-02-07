@@ -665,8 +665,7 @@ class Library :
         self.version = (ver_major.value, ver_minor.value, ver_patch.value)
         self.faces = weakref.WeakSet()
           # set of weak refs to child Face objects I create, to try to ensure they
-          # are properly cleaned up if/when I disappear. Unfortunately circumstances
-          # of invocation of __del__ methods aren’t reliable enough to avoid segfaults.
+          # are properly cleaned up if/when I disappear.
     #end __init__
 
     def __del__(self) :
@@ -763,7 +762,6 @@ class Face :
 
     @property
     def lib(self) :
-        # doesn't help with segfaults
         result = self._lib()
         assert result != None, "parent library has gone"
         return \
@@ -771,7 +769,8 @@ class Face :
     #end lib
 
     def __del__(self) :
-        if self.ftobj != None :
+        if self.ftobj != None and self._lib() != None :
+            # self._lib might have vanished prematurely during program exit
             check(ft.FT_Done_Face(self.ftobj))
             self.ftobj = None
             self.lib.faces.remove(self)
