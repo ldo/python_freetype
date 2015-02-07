@@ -788,10 +788,10 @@ class Face :
     #end set_charmap
 
     def get_charmap_index(self, charmap) :
-        # fixme: charmap needs to be an FT.CharMap for now.
-        # fixme: doesn't actually work; segfaults
+        "charmap should be an element of self.charmaps; attempting" \
+        " to generalize this seems to lead to segfaults."
         return \
-            ft.FT_Get_Charmap_Index(charmap)
+            ft.FT_Get_Charmap_Index(charmap["."])
     #end get_charmap_index
 
     def set_char_size(self, width = None, height = None, horz_resolution = None, vert_resolution = None) :
