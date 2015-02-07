@@ -925,10 +925,11 @@ def_extra_fields \
   )
 
 class GlyphSlot :
-    "represents an FT.GlyphSlotRec. Do not instantiate directly; call Face.glyph_slots instead."
+    "represents an FT.GlyphSlotRec. Do not instantiate directly;" \
+    " call Face.glyph_slots or access via Face.glyph and GlyphSlot.next links instead."
 
-    def __init__(self, slot) :
-        self.ftobj = slot
+    def __init__(self, ftobj) :
+        self.ftobj = ftobj
     #end __init__
 
     @property
@@ -942,11 +943,22 @@ class GlyphSlot :
             result
     #end def
 
-    def get_outline(self) :
-        "returns a copy of the current glyph outline definition. Assumes there is one!"
+    @property
+    def outline(self) :
         return \
             Outline(self.ftobj.contents.outline)
-    #end get_outline
+    #end outline
+
+    def render_glyph(self, render_mode) :
+        "renders the loaded glyph to a bitmap."
+        check(ft.FT_Render_Glyph(self.ftobj, render_mode))
+    #end render_glyph
+
+    @property
+    def bitmap(self) :
+        return \
+            self.ftobj.contents.bitmap # direct low-level access for now
+    #end bitmap
 
 #end GlyphSlot
 def_extra_fields \
@@ -957,6 +969,8 @@ def_extra_fields \
             ("linearHoriAdvance", from_f16_16),
             ("linearVertAdvance", from_f16_16),
             ("format", from_tag),
+            ("bitmap_left", None),
+            ("bitmap_top", None),
         ),
     struct_fields =
         (
@@ -974,20 +988,27 @@ class CURVEPT(enum.Enum) :
 #end CURVEPT
 
 class Outline :
-    "Pythonic representation of an FT.Outline. Get one of these from GlyphSlot.get_outline."
+    "Pythonic representation of an FT.Outline. Get one of these from GlyphSlot.outline."
+    # TODO: outline-processing functions
+    # <http://www.freetype.org/freetype2/docs/reference/ft2-outline_processing.html>?
 
     def __init__(self, ftobj) :
-        contours = []
+        self.ftobj = ftobj
+    #end __init__
+
+    @property
+    def contours(self) :
+        result = []
         pointindex = 0
-        for contourindex in range(0, ftobj.n_contours) :
+        for contourindex in range(0, self.ftobj.n_contours) :
             contour = []
-            endpoint = ftobj.contours[contourindex]
+            endpoint = self.ftobj.contours[contourindex]
             while True :
-                if pointindex == ftobj.n_points :
+                if pointindex == self.ftobj.n_points :
                     raise IndexError("contour point index has run off the end")
                 #end if
-                point = ftobj.points[pointindex]
-                flag = ftobj.tags[pointindex]
+                point = self.ftobj.points[pointindex]
+                flag = self.ftobj.tags[pointindex]
                 pt_type = flag & 3
                 for c in CURVEPT :
                     if c.value == pt_type :
@@ -1002,10 +1023,11 @@ class Outline :
                     break
                 pointindex += 1
             #end while
-            contours.append(tuple(contour))
+            result.append(tuple(contour))
         #end for
-        self.contours = tuple(contours)
-    #end __init__
+        return \
+            tuple(result)
+    #end contours
 
 #end Outline
 
