@@ -15,7 +15,7 @@ import ctypes as ct
 import struct
 import weakref
 
-ft = ct.cdll.LoadLibrary("libfreetype.so")
+ft = ct.cdll.LoadLibrary("libfreetype.so.6")
 
 def struct_to_dict(item, itemtype, indirect, extra_decode = None) :
     "decodes the elements of a ctypes Structure into a dict. extra_decode" \
