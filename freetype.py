@@ -862,6 +862,7 @@ class Face :
             yield GlyphSlot(glyph)
             try :
                 glyph = glyph.contents.next
+                _ = glyph.contents # check it's not just wrapping a null pointer
             except ValueError : # assume because of NULL pointer access
                 break
             #end try
@@ -942,6 +943,7 @@ class GlyphSlot :
     def next(self) :
         try :
             result = GlyphSlot(self.ftobj.contents.next)
+            _ = result.advance # check it's not just wrapping a null pointer
         except ValueError : # assume because of NULL pointer access
             result = None
         #end try
