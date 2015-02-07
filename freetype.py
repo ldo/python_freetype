@@ -43,7 +43,8 @@ def struct_to_dict(item, itemtype, indirect, extra_decode = None) :
 #end struct_to_dict
 
 class FT :
-    "useful definitions adapted from freetype.h"
+    "useful definitions adapted from freetype.h. See the more Pythonic wrappers" \
+    " defined further down in preference to accessing low-level structures directly."
 
     Error = ct.c_int # hopefully this is always correct
 
@@ -446,7 +447,7 @@ from_tag.__name__ = "from_tag"
 from_tag.__doc__ = "converts an integer tag code to more comprehensible four-character form."
 
 class Vector :
-    "Pythonic representation of a FreeType Vector, with conversions to/from FreeType form."
+    "Pythonic representation of an FT.Vector, with conversions to/from FreeType form."
 
     def __init__(self, x, y) :
         "args should be float values."
@@ -541,7 +542,7 @@ _vector_convs()
 del _vector_convs
 
 class Matrix :
-    "Pythonic representation of a FreeType Matrix, with conversions to/from FreeType form."
+    "Pythonic representation of an FT.Matrix, with conversions to/from FreeType form."
 
     def __init__(self, xx, xy, yx, yy) :
         "args should be float values."
@@ -574,6 +575,7 @@ class Matrix :
 
 #end Matrix
 
+# not sure that any of these are really necessary...
 ft.FT_Init_FreeType.restype = FT.Error
 ft.FT_New_Face.restype = FT.Error
 # ft.FT_New_face.argtypes = (FT.Library?, ct.c_char_p, ct.c_int, ct.POINTER(FT.Face))
@@ -851,6 +853,13 @@ class Face :
         #end while
     #end glyph_slots
 
+    @property
+    def glyph(self) :
+        "returns the first or only glyph slot."
+        return \
+            GlyphSlot(self.ftobj.contents.glyph)
+    #end glyph
+
 #end Face
 def_extra_fields \
   (
@@ -893,6 +902,17 @@ class GlyphSlot :
     def __init__(self, slot) :
         self.ftobj = slot
     #end __init__
+
+    @property
+    def next(self) :
+        try :
+            result = GlyphSlot(self.ftobj.contents.next)
+        except ValueError : # assume because of NULL pointer access
+            result = None
+        #end try
+        return \
+            result
+    #end def
 
     def get_outline(self) :
         "returns a copy of the current glyph outline definition. Assumes there is one!"
