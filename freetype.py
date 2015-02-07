@@ -787,6 +787,13 @@ class Face :
         check(ft.FT_Set_Charmap(self.ftobj, charmap["."]))
     #end set_charmap
 
+    def get_charmap_index(self, charmap) :
+        # fixme: charmap needs to be an FT.CharMap for now.
+        # fixme: doesn't actually work; segfaults
+        return \
+            ft.FT_Get_Charmap_Index(charmap)
+    #end get_charmap_index
+
     def set_char_size(self, width = None, height = None, horz_resolution = None, vert_resolution = None) :
         assert \
             (
