@@ -314,6 +314,10 @@ class FT :
     STYLE_FLAG_ITALIC = ( 1 << 0 )
     STYLE_FLAG_BOLD = ( 1 << 1 )
 
+    KERNING_DEFAULT = 0 # scaled and grid-fitted
+    KERNING_UNFITTED = 1 # scaled but not grid-fitted
+    KERNING_UNSCALED = 2 # return value in original font units
+
     #class FaceRec(ct.Structure) :
     #   "initial public part of an FT_Face"
     FaceRec._fields_ = \
@@ -832,6 +836,11 @@ class Face :
         #end while
     #end char_glyphs
 
+    def get_char_index(self, charcode) :
+        return \
+            ft.FT_Get_Char_Index(self.ftobj, charcode)
+    #end get_char_index
+
     def load_glyph(self, glyph_index, load_flags) :
         check(ft.FT_Load_Glyph(self.ftobj, glyph_index, load_flags))
     #end load_glyph
@@ -859,6 +868,25 @@ class Face :
         return \
             GlyphSlot(self.ftobj.contents.glyph)
     #end glyph
+
+    def get_kerning(self, left_glyph, right_glyph, kern_mode) :
+        result = FT.Vector()
+        check(ft.FT_Get_Kerning(self.ftobj, left_glyph, right_glyph, kern_mode, ct.byref(result)))
+        if self.ftobj.contents.face_flags & FT.FACE_FLAG_SCALABLE != 0 and kern_mode != FT.KERNING_UNSCALED :
+            result = Vector.from_ft_f16_16(result)
+        else :
+            result = Vector.from_ft_int(result)
+        #end if
+        return \
+            result
+    #end get_kerning
+
+    def get_track_kerning(self, point_size, degree) :
+        result = FT.Fixed(0)
+        check(ft.FT_Get_Track_Kerning(self.ftobj, to_f16_16(point_size), degree, ct.byref(result)))
+        return \
+            from_16_16(result.value)
+    #end get_track_kerning
 
 #end Face
 def_extra_fields \
