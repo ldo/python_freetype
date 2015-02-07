@@ -247,7 +247,7 @@ class FT :
                 ("buffer", ct.POINTER(ct.c_ubyte)),
                 ("num_grays", ct.c_short),
                 ("pixel_mode", ct.c_byte),
-                ("palette_mod", ct.c_byte),
+                ("palette_mode", ct.c_byte),
                 ("palette", ct.c_void_p),
             ]
     #end Bitmap
