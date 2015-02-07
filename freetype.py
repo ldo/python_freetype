@@ -1,7 +1,11 @@
 #+
 # A Python 3 wrapper for FreeType <http://www.freetype.org/> using ctypes.
 #
-# See also ctfreetype.py and freetype_test in my ctypes_graphics project.
+# Copyright 2015 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+# Dual-licensed under the FreeType licence
+# <http://git.savannah.gnu.org/cgit/freetype/freetype2.git/tree/docs/FTL.TXT>
+# and GPLv2 <http://git.savannah.gnu.org/cgit/freetype/freetype2.git/tree/docs/GPLv2.TXT>
+# or later, to be compatible with FreeType itself.
 #-
 
 from numbers import \
