@@ -923,7 +923,15 @@ def_extra_fields \
                                 item = x,
                                 itemtype = FT.Size_Metrics,
                                 indirect = False,
-                                extra_decode = {"x_scale" : from_f16_16, "y_scale" : from_f16_16}
+                                extra_decode =
+                                    {
+                                        "x_scale" : from_f16_16,
+                                        "y_scale" : from_f16_16,
+                                        "ascender" : from_f26_6,
+                                        "descender" : from_f26_6,
+                                        "height" : from_f26_6,
+                                        "max_advance" : from_f26_6,
+                                    }
                               )
                 },
             ),
