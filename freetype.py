@@ -589,6 +589,7 @@ ft.FT_Set_Charmap.argtypes = (FT.Face, FT.CharMap)
 ft.FT_Set_Charmap.restype = FT.Error
 ft.FT_Get_First_Char.restype = ct.c_ulong
 ft.FT_Get_Next_Char.restype = ct.c_ulong
+ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
 
 class FTException(Exception) :
     "just to identify a FreeType-specific error exception."
@@ -776,6 +777,13 @@ class Face :
             self.lib.faces.remove(self)
         #end if
     #end __del__
+
+    @property
+    def font_format(self) :
+        "returns the font format."
+        return \
+            ft.FT_Get_X11_Font_Format(self.ftobj).decode("utf-8")
+    #end font_format
 
     def select_charmap(self, encoding) :
         check(ft.FT_Select_Charmap(self.ftobj, encoding))
