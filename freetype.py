@@ -405,6 +405,9 @@ class FT :
       # Bits 16..19 are used by `FT_LOAD_TARGET_'
     LOAD_COLOR = ( 1 << 20 )
 
+    # extra load flag for FT_Get_Advance and FT_Get_Advances functions
+    ADVANCE_FLAG_FAST_ONLY = 0x20000000
+
     Render_Mode = ct.c_uint
     # values for Render_Mode
     RENDER_MODE_NORMAL = 0
@@ -902,6 +905,20 @@ class Face :
         return \
             from_f16_16(result.value)
     #end get_track_kerning
+
+    def get_advance(self, gindex, load_flags) :
+        result = FT.Fixed(0)
+        check(ft.FT_Get_Advance(self.ftobj, gindex, load_flags, ct.byref(result)))
+        return \
+            (from_f16_16, int)[load_flags & FT.LOAD_NO_SCALE != 0](result.value)
+    #end get_advance
+
+    def get_advances(self, start, count, load_flags) :
+        result = (count * FT.Fixed)()
+        check(ft.FT_Get_Advances(self.ftobj, start, count, load_flags, ct.byref(result)))
+        return \
+            tuple((from_f16_16, int)[load_flags & FT.LOAD_NO_SCALE != 0](item) for item in result)
+    #end get_advances
 
 #end Face
 def_extra_fields \
