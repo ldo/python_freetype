@@ -458,6 +458,7 @@ class FT :
             ("bitmap", Bitmap),
         ]
     #end BitmapGlyphRec
+    BitmapGlyph = ct.POINTER(BitmapGlyphRec)
 
     class OutlineGlyphRec(ct.Structure) :
         pass
@@ -467,6 +468,7 @@ class FT :
             ("outline", Outline),
         ]
     #end OutlineGlyphRec
+    OutlineGlyph = ct.POINTER(OutlineGlyphRec)
 
 #end FT
 
@@ -1016,7 +1018,7 @@ class GlyphSlot :
     @property
     def outline(self) :
         return \
-            Outline(self.ftobj.contents.outline)
+            Outline(self.ftobj.contents.outline, self, None)
     #end outline
 
     def render_glyph(self, render_mode) :
@@ -1069,9 +1071,26 @@ class Outline :
     # TODO: outline-processing functions
     # <http://www.freetype.org/freetype2/docs/reference/ft2-outline_processing.html>?
 
-    def __init__(self, ftobj) :
+    def __init__(self, ftobj, owner, lib) :
         self.ftobj = ftobj
+        if owner != None :
+            self.owner = owner # keep a strong ref to ensure it doesn’t disappear unexpectedly
+            assert lib == None
+            self._lib = None
+        else :
+            self.owner = None
+            self._lib = weakref.ref(lib)
+        #end if
     #end __init__
+
+    def __del__(self) :
+        if self.owner == None and self._lib != None and self._lib() != None :
+            if self.ftobj != None :
+                check(ft.FT_Outline_Done(self._lib(), self.ftobj))
+                self.ftobj = None
+            #end if
+        #end if
+    #end __del__
 
     @property
     def contours(self) :
@@ -1141,7 +1160,7 @@ class Glyph :
     def to_bitmap(self, render_mode, origin, replace) :
         "converts the Glyph to a BitmapGlyph, offset by the specified Vector origin." \
         " If replace, then the contents of the current Glyph is replaced; otherwise" \
-        " a new Glyph object is returned. Fixme: FreeType bug? replace arg makes no" \
+        " a new Glyph object is returned. FIXME: FreeType bug? replace arg makes no" \
         " difference; the Glyph object is always replaced."
         result = ct.pointer(self.ftobj)
         check(ft.FT_Glyph_To_Bitmap(result, render_mode, ct.byref(origin.to_ft_f26_6()), int(replace)))
@@ -1154,6 +1173,13 @@ class Glyph :
         return \
             result
     #end to_bitmap
+
+    @property
+    def outline(self) :
+        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_OUTLINE
+        return \
+            Outline(ct.cast(self.ftobj, FT.OutlineGlyph).contents.outline, self, None)
+    #end outline
 
 #end Glyph
 def_extra_fields \
