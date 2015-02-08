@@ -1165,7 +1165,7 @@ def_extra_fields \
         ),
     struct_fields =
         (
-            ("advance", FT.Vector, False, {None : from_f26_6}),
+            ("advance", FT.Vector, False, {None : from_f16_16}),
         ),
   )
 
