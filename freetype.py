@@ -428,6 +428,46 @@ class FT :
         ]
     #end Matrix
 
+    Glyph_BBox_Mode = ct.c_uint
+    # values for Glyph_BBox_Mode
+    GLYPH_BBOX_UNSCALED = 0
+    GLYPH_BBOX_SUBPIXELS = 0
+    GLYPH_BBOX_GRIDFIT = 1
+    GLYPH_BBOX_TRUNCATE = 2
+    GLYPH_BBOX_PIXELS = 3
+
+    class GlyphRec(ct.Structure) :
+        pass
+    GlyphRec._fields_ = \
+        [
+            ("library", Library),
+            ("clazz", ct.c_void_p), # const FT_Glyph_Class*
+            ("format", Glyph_Format),
+            ("advance", Vector),
+        ]
+    #end GlyphRec
+    Glyph = ct.POINTER(GlyphRec)
+
+    class BitmapGlyphRec(ct.Structure) :
+        pass
+    BitmapGlyphRec._fields_ = \
+        [
+            ("root", GlyphRec),
+            ("left", ct.c_int),
+            ("top", ct.c_int),
+            ("bitmap", Bitmap),
+        ]
+    #end BitmapGlyphRec
+
+    class OutlineGlyphRec(ct.Structure) :
+        pass
+    OutlineGlyphRec._fields_ = \
+        [
+            ("root", GlyphRec),
+            ("outline", Outline),
+        ]
+    #end OutlineGlyphRec
+
 #end FT
 
 def make_fixed_conv(shift) :
@@ -686,7 +726,7 @@ class Library :
     #end __del__
 
     def new_face(self, filename, face_index = 0) :
-        "loads an FT_Face from a file and returns a Face object for it."
+        "loads an FT.Face from a file and returns a Face object for it."
         result_face = FT.Face()
         check(ft.FT_New_Face(self.lib, filename.encode("utf-8"), face_index, ct.byref(result_face)))
         return \
@@ -696,7 +736,7 @@ class Library :
 #end Library
 
 class Face :
-    "represents an FT_Face. Do not instantiate directly; call Library.new_face instead."
+    "represents an FT.Face. Do not instantiate directly; call Library.new_face instead."
 
     def __init__(self, lib, face) :
         self.ftobj = face
@@ -1001,6 +1041,13 @@ class GlyphSlot :
             self.ftobj.contents.bitmap # direct low-level access for now
     #end bitmap
 
+    def get_glyph(self) :
+        result = FT.Glyph()
+        check(ft.FT_Get_Glyph(self.ftobj, ct.byref(result)))
+        return \
+            Glyph(result)
+    #end get_glyph
+
 #end GlyphSlot
 def_extra_fields \
   (
@@ -1071,5 +1118,66 @@ class Outline :
     #end contours
 
 #end Outline
+
+class Glyph :
+    "Pythonic representation of an FT.Glyph. Get one of these from GlyphSlot.get_glyph."
+
+    def __init__(self, ftobj) :
+        self.ftobj = ftobj
+    #end __init__
+
+    def __del__(self) :
+        if self.ftobj != None :
+            ft.FT_Done_Glyph(self.ftobj)
+            self.ftobj = None
+        #end if
+    #end __del__
+
+    def copy(self) :
+        "returns a copy of the Glyph."
+        result = FT.Glyph()
+        check(ft.FT_Glyph_Copy(self.ftobj, ct.byref(result)))
+        return \
+            Glyph(result)
+    #end copy
+
+    def get_cbox(self, bbox_mode) :
+        "returns a glyph’s control box, which contains all the curve control points."
+        result = FT.BBox()
+        check(ft.FT_Glyph_Get_CBox(self.ftobj, bbox_mode, ct.byref(result)))
+        return \
+            struct_to_dict(result, FT.BBox, False, {None : (from_f26_6, int)[bbox_mode >= FT.GLYPH_BBOX_TRUNCATE]})
+    #end get_cbox
+
+    def to_bitmap(self, render_mode, origin, replace) :
+        "converts the Glyph to a BitmapGlyph, offset by the specified Vector origin." \
+        " If replace, then the contents of the current Glyph is replaced; otherwise" \
+        " a new Glyph object is returned. Fixme: FreeType bug? replace arg makes no" \
+        " difference; the Glyph object is always replaced."
+        result = ct.pointer(self.ftobj)
+        check(ft.FT_Glyph_To_Bitmap(result, render_mode, ct.byref(origin.to_ft_f26_6()), int(replace)))
+        if replace :
+            self.ftobj = result.contents
+            result = None
+        else :
+            result = Glyph(result.contents)
+        #end if
+        return \
+            result
+    #end to_bitmap
+
+#end Glyph
+def_extra_fields \
+  (
+    clas = Glyph,
+    simple_fields =
+        (
+            ("format", from_tag),
+        ),
+    struct_fields =
+        (
+            ("advance", FT.Vector, False, {None : from_f26_6}),
+        ),
+  )
 
 del def_extra_fields # my job is done
