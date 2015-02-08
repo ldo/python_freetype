@@ -900,7 +900,7 @@ class Face :
         result = FT.Fixed(0)
         check(ft.FT_Get_Track_Kerning(self.ftobj, to_f16_16(point_size), degree, ct.byref(result)))
         return \
-            from_16_16(result.value)
+            from_f16_16(result.value)
     #end get_track_kerning
 
 #end Face
