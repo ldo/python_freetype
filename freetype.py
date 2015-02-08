@@ -707,19 +707,10 @@ class Library :
         ver_patch = ct.c_int()
         ft.FT_Library_Version(self.lib, ct.byref(ver_major), ct.byref(ver_minor), ct.byref(ver_patch))
         self.version = (ver_major.value, ver_minor.value, ver_patch.value)
-        self.faces = weakref.WeakSet()
-          # set of weak refs to child Face objects I create, to try to ensure they
-          # are properly cleaned up if/when I disappear.
     #end __init__
 
     def __del__(self) :
         if self.lib.value != None :
-            for face in set(self.faces) :
-                face = face()
-                if face != None :
-                    face.__del__()
-                #end if
-            #end for
             ft.FT_Done_FreeType(self.lib)
             self.lib.value = None
         #end if
@@ -741,7 +732,6 @@ class Face :
     def __init__(self, lib, face) :
         self.ftobj = face
         self._lib = weakref.ref(lib)
-        lib.faces.add(self)
         facerec = ct.cast(self.ftobj, FT.Face).contents
         # following attrs don't change, but perhaps it is simpler to define them
         # via def_extra_fields anyway
@@ -817,7 +807,6 @@ class Face :
             # self._lib might have vanished prematurely during program exit
             check(ft.FT_Done_Face(self.ftobj))
             self.ftobj = None
-            self.lib.faces.remove(self)
         #end if
     #end __del__
 
