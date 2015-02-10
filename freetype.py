@@ -475,6 +475,21 @@ class FT :
 
 #end FT
 
+# not sure that any of these are really necessary...
+ft.FT_Init_FreeType.restype = FT.Error
+ft.FT_New_Face.restype = FT.Error
+# ft.FT_New_face.argtypes = (FT.Library?, ct.c_char_p, ct.c_int, ct.POINTER(FT.Face))
+ft.FT_Select_Charmap.argtypes = (FT.Face, FT.Encoding)
+ft.FT_Select_Charmap.restype = FT.Error
+ft.FT_Set_Charmap.argtypes = (FT.Face, FT.CharMap)
+ft.FT_Set_Charmap.restype = FT.Error
+ft.FT_Get_First_Char.restype = ct.c_ulong
+ft.FT_Get_Next_Char.restype = ct.c_ulong
+ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
+
+libc.memcpy.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_size_t)
+libc.memcpy.restype = None
+
 def make_fixed_conv(shift) :
     "returns two functions, the first converting a float value to fixed" \
     " point with shift places to the right of the binary point, the second" \
@@ -497,6 +512,71 @@ to_f16_16, from_f16_16 = make_fixed_conv(16)
 from_tag = lambda x : struct.pack(">I", x).decode("ascii")
 from_tag.__name__ = "from_tag"
 from_tag.__doc__ = "converts an integer tag code to more comprehensible four-character form."
+
+class FTException(Exception) :
+    "just to identify a FreeType-specific error exception."
+
+    def __init__(self, code) :
+        self.args = (("FreeType error %d" % code),)
+    #end __init__
+
+#end FTException
+
+def check(sts) :
+    "ensures a successful return from a FreeType call."
+    if sts != 0 :
+        raise FTException(sts)
+    #end if
+#end check
+
+def def_extra_fields(clas, simple_fields, struct_fields) :
+    # bulk definition of extra read-only Python attributes that correspond in a
+    # straightforward fashion to FT structure fields. Assumes the instance attribute
+    # “ftobj” points to the FT object to be decoded.
+
+    def def_simple_attr(field, convert) :
+
+        def attr(self) :
+            return \
+                convert(getattr(self.ftobj.contents, field))
+        #end attr
+
+    #begin def_simple_attr
+        if convert == None :
+            convert = lambda x : x
+        #end if
+        setattr(clas, field, property(attr))
+    #end def_simple_attr
+
+    def def_struct_attr(field, fieldtype, indirect, extra_decode) :
+
+        def attr(self) :
+            return \
+                struct_to_dict \
+                  (
+                    getattr(self.ftobj.contents, field),
+                    fieldtype,
+                    indirect,
+                    extra_decode
+                  )
+        #end attr
+
+    #begin def_struct_attr
+        setattr(clas, field, property(attr))
+    #end def_struct_attr
+
+#begin def_extra_fields
+    for field, convert in simple_fields :
+        def_simple_attr(field, convert)
+    #end for
+    for field, fieldtype, indirect, extra_decode in struct_fields :
+        def_struct_attr(field, fieldtype, indirect, extra_decode)
+    #end for
+#end def_extra_fields
+
+#+
+# Higher-level wrapper classes for FreeType objects
+#-
 
 class Vector :
     "Pythonic representation of an FT.Vector, with conversions to/from FreeType form."
@@ -557,6 +637,7 @@ class Vector :
 
 #end Vector
 def _vector_convs() :
+    # defines conversions to/from components of different fixed-point formats
 
     def def_vector_conv(name, shift) :
         if shift != 0 :
@@ -626,82 +707,6 @@ class Matrix :
     #end to_ft
 
 #end Matrix
-
-# not sure that any of these are really necessary...
-ft.FT_Init_FreeType.restype = FT.Error
-ft.FT_New_Face.restype = FT.Error
-# ft.FT_New_face.argtypes = (FT.Library?, ct.c_char_p, ct.c_int, ct.POINTER(FT.Face))
-ft.FT_Select_Charmap.argtypes = (FT.Face, FT.Encoding)
-ft.FT_Select_Charmap.restype = FT.Error
-ft.FT_Set_Charmap.argtypes = (FT.Face, FT.CharMap)
-ft.FT_Set_Charmap.restype = FT.Error
-ft.FT_Get_First_Char.restype = ct.c_ulong
-ft.FT_Get_Next_Char.restype = ct.c_ulong
-ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
-
-libc.memcpy.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_size_t)
-libc.memcpy.restype = None
-
-class FTException(Exception) :
-    "just to identify a FreeType-specific error exception."
-
-    def __init__(self, code) :
-        self.args = (("FreeType error %d" % code),)
-    #end __init__
-
-#end FTException
-
-def check(sts) :
-    "ensures a successful return from a FreeType call."
-    if sts != 0 :
-        raise FTException(sts)
-    #end if
-#end check
-
-def def_extra_fields(clas, simple_fields, struct_fields) :
-    # bulk definition of extra read-only Python attributes that correspond in a
-    # straightforward fashion to FT structure fields. Assumes the instance attribute
-    # “ftobj” points to the FT object to be decoded.
-
-    def def_simple_attr(field, convert) :
-
-        def attr(self) :
-            return \
-                convert(getattr(self.ftobj.contents, field))
-        #end attr
-
-    #begin def_simple_attr
-        if convert == None :
-            convert = lambda x : x
-        #end if
-        setattr(clas, field, property(attr))
-    #end def_simple_attr
-
-    def def_struct_attr(field, fieldtype, indirect, extra_decode) :
-
-        def attr(self) :
-            return \
-                struct_to_dict \
-                  (
-                    getattr(self.ftobj.contents, field),
-                    fieldtype,
-                    indirect,
-                    extra_decode
-                  )
-        #end attr
-
-    #begin def_struct_attr
-        setattr(clas, field, property(attr))
-    #end def_struct_attr
-
-#begin def_extra_fields
-    for field, convert in simple_fields :
-        def_simple_attr(field, convert)
-    #end for
-    for field, fieldtype, indirect, extra_decode in struct_fields :
-        def_struct_attr(field, fieldtype, indirect, extra_decode)
-    #end for
-#end def_extra_fields
 
 class Library :
     "Instantiate this to open the FreeType library. Use the new_face method to" \
