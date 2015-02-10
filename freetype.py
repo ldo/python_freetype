@@ -1237,6 +1237,42 @@ class Bitmap :
         #end if
     #end __del__
 
+    # wrappers for FT.Bitmap functions
+    # <http://www.freetype.org/freetype2/docs/reference/ft2-bitmap_handling.html>
+
+    def copy(self, lib) :
+        "returns a new Bitmap which is a copy of this one."
+        result = ct.pointer(FT.Bitmap())
+        ft.FT_Bitmap_New(result)
+        check(ft.FT_Bitmap_Copy(lib.lib, self.ftobj, result))
+        return \
+            Bitmap(result, None, lib.lib)
+    #end copy
+
+    def embolden(self, lib, x_strength, y_strength) :
+        "emboldens the bitmap by about the specified number of pixels horizontally and" \
+        " vertically. lib is a Library object."
+        check(ft.FT_Bitmap_Embolden
+          (
+            lib.lib,
+            self.ftobj,
+            to_f26_6(x_strength),
+            to_f26_6(y_strength)
+          ))
+    #end embolden
+
+    def convert(self, lib, alignment) :
+        "creates and returns a new Bitmap with the pixel format converted to PIXEL_MODE_GRAY" \
+        " and the specified alignment for the pitch (typically 1, 2 or 4)."
+        result = ct.pointer(FT.Bitmap())
+        ft.FT_Bitmap_New(result)
+        check(ft.FT_Bitmap_Convert(lib.lib, self.ftobj, result, alignment))
+        return \
+            Bitmap(result, None, lib.lib)
+    #end convert
+
+    # end wrappers for FT.Bitmap functions
+
     def make_image_surface(self) :
         "creates a Cairo ImageSurface containing a copy of the Bitmap pixels."
         # TODO: if I own the pixel buffer, could I use create_for_data rather
