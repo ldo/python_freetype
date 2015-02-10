@@ -474,6 +474,24 @@ class FT :
     #end OutlineGlyphRec
     OutlineGlyph = ct.POINTER(OutlineGlyphRec)
 
+    Outline_MoveToFunc = ct.CFUNCTYPE(None, ct.POINTER(Vector), ct.c_void_p)
+    Outline_LineToFunc = ct.CFUNCTYPE(None, ct.POINTER(Vector), ct.c_void_p)
+    Outline_ConicToFunc = ct.CFUNCTYPE(None, ct.POINTER(Vector), ct.POINTER(Vector), ct.c_void_p)
+    Outline_CubicToFunc = ct.CFUNCTYPE(None, ct.POINTER(Vector), ct.POINTER(Vector), ct.POINTER(Vector), ct.c_void_p)
+
+    class Outline_Funcs(ct.Structure) :
+        pass
+    Outline_Funcs._fields_ = \
+        [
+            ("move_to", Outline_MoveToFunc),
+            ("line_to", Outline_LineToFunc),
+            ("conic_to", Outline_ConicToFunc),
+            ("cubic_to", Outline_CubicToFunc),
+            ("shift", ct.c_int),
+            ("delta", Pos),
+        ]
+    #end Outline_Funcs
+
 #end FT
 
 # not sure that any of these are really necessary...
@@ -1122,7 +1140,7 @@ class GlyphSlot :
     @property
     def outline(self) :
         return \
-            Outline(self.ftobj.contents.outline, self, None)
+            Outline(ct.pointer(self.ftobj.contents.outline), self, None)
     #end outline
 
     def render_glyph(self, render_mode) :
@@ -1177,8 +1195,6 @@ class CURVEPT(enum.Enum) :
 
 class Outline :
     "Pythonic representation of an FT.Outline. Get one of these from GlyphSlot.outline."
-    # TODO: outline-processing functions
-    # <http://www.freetype.org/freetype2/docs/reference/ft2-outline_processing.html>?
 
     def __init__(self, ftobj, owner, lib) :
         self.ftobj = ftobj
@@ -1201,19 +1217,101 @@ class Outline :
         #end if
     #end __del__
 
+    # wrappers for outline-processing functions
+    # <http://www.freetype.org/freetype2/docs/reference/ft2-outline_processing.html>?
+
+    @staticmethod
+    def new(lib, nr_points, nr_contours) :
+        "allocates a new Outline object with enough room for the" \
+        " specified numbers of control points and contours."
+        result = FT.Outline()
+        check(ft.FT_Outline_New(lib.lib, nr_points, nr_contours, ct.byref(result)))
+        return \
+            Outline(ct.pointer(result), None, lib)
+    #end new
+
+    def copy(self, other) :
+        "makes a copy of the contours of this Outline into other, which must have" \
+        " the same numbers of control points and contours."
+        if not isinstance(other, Outline) :
+            raise TypeError("can only copy into another Outline")
+        #end if
+        check(ft.FT_Outline_Copy(self.ftobj, other.ftobj))
+    #end copy
+
+    def translate(self, x_offset, y_offset) :
+        ft.FT_Outline_Translate(self.ftobj, x_offset, y_offset)
+    #end translate
+
+    def transform(self, matrix) :
+        "transforms the Outline by the specified Matrix."
+        ft.FT_Outline_Transform(self.ftobj, ct.byref(matrix.to_ft()))
+    #end transform
+
+    def embolden(self, strength) :
+        "uniformly emboldens the Outline."
+        check(ft.FT_Outline_Embolden(self.ftobj, to_ft26_6(strength)))
+    #end embolden
+
+    def embolden_xy(self, x_strength, y_strength) :
+        "non-uniformly emboldens the Outline."
+        check(ft.FT_Outline_EmboldenXY(self.ftobj, to_ft26_6(x_strength), to_ft26_6(y_strength)))
+    #end embolden
+
+    def reverse(self) :
+        "reverses the Outline direction."
+        ft.FT_Outline_Reverse(self.ftobj)
+    #end reverse
+
+    def check(self) :
+        "checks the Outline contents."
+        check(ft.FT_Outline_Check(self.ftobj))
+    #end check
+
+    def get_cbox(self) :
+        "returns the Outline’s control box, which encloses all the control points."
+        result = FT.BBox()
+        ft.FT_Outline_Get_CBox(self.ftobj, ct.byref(result))
+        return \
+            struct_to_dict(result, FT.BBox, False, {None : int})
+    #end get_cbox
+
+    def get_bbox(self) :
+        "returns the Outline’s bounding box, which encloses the entire glyph."
+        result = FT.BBox()
+        check(ft.FT_Outline_Get_BBox(self.ftobj, ct.byref(result)))
+        return \
+            struct_to_dict(result, FT.BBox, False, {None : from_f26_6})
+    #end get_bbox
+
+    def get_bitmap(self, lib, the_bitmap) :
+        "renders the Outline into the pre-existing Bitmap."
+        if not isinstance(the_bitmap, Bitmap) :
+            raise TypeError("expecting a Bitmap")
+        #end if
+        check(ft.FT_Outline_Get_Bitmap(lib.lib, self.ftobj, ct.byref(the_bitmap.ftobj)))
+    #end get_bitmap
+
+    # TODO: FT_Outline_Render, FT_Outline_Get_Orientation, FT_Outline_Decompose?
+
+    # end of wrappers for outline-processing functions
+
     @property
     def contours(self) :
+        "returns a tuple of the contours of the outline. Each element is a tuple of curve" \
+        " points, each in turn being a triple (coord : Vector, point_type : CURVEPT, dropout_flags : int)."
         result = []
         pointindex = 0
-        for contourindex in range(0, self.ftobj.n_contours) :
+        ftobj = self.ftobj.contents
+        for contourindex in range(0, ftobj.n_contours) :
             contour = []
-            endpoint = self.ftobj.contours[contourindex]
+            endpoint = ftobj.contours[contourindex]
             while True :
-                if pointindex == self.ftobj.n_points :
+                if pointindex == ftobj.n_points :
                     raise IndexError("contour point index has run off the end")
                 #end if
-                point = self.ftobj.points[pointindex]
-                flag = self.ftobj.tags[pointindex]
+                point = ftobj.points[pointindex]
+                flag = ftobj.tags[pointindex]
                 pt_type = flag & 3
                 for c in CURVEPT :
                     if c.value == pt_type :
@@ -1233,6 +1331,60 @@ class Outline :
         return \
             tuple(result)
     #end contours
+
+    def draw(self, g) :
+        "appends the Outline contours onto the current path being constructed in g, which" \
+        " is expected to be a cairo.Context."
+
+        pos0 = None
+
+        def move_to(pos, _) :
+            nonlocal pos0
+            pos = Vector.from_ft_int(pos.contents)
+            pos0 = pos
+            g.move_to(pos.x, pos.y)
+        #end move_to
+
+        def line_to(pos, _) :
+            nonlocal pos0
+            pos = Vector.from_ft_int(pos.contents)
+            pos0 = pos
+            g.line_to(pos.x, pos.y)
+        #end line_to
+
+        def conic_to(qpos1, qpos2, _) :
+            nonlocal pos0
+            midpos = Vector.from_ft_int(qpos1.contents)
+            pos3 = Vector.from_ft_int(qpos2.contents)
+            # quadratic-to-cubic conversion taken from
+            # <http://stackoverflow.com/questions/3162645/convert-a-quadratic-bezier-to-a-cubic>
+            pos1 = pos0 + 2 * (midpos - pos0) / 3
+            pos2 = pos3 + 2 * (midpos - pos3) / 3
+            g.curve_to(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y)
+            pos0 = pos3
+        #end conic_to
+
+        def cubic_to(pos1, pos2, pos3, _) :
+            nonlocal pos0
+            pos1 = Vector.from_ft_int(pos1.contents)
+            pos2 = Vector.from_ft_int(pos2.contents)
+            pos3 = Vector.from_ft_int(pos3.contents)
+            g.curve_to(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y)
+            pos0 = pos3
+        #end cubic_to
+
+    #begin draw
+        funcs = FT.Outline_Funcs \
+          (
+            move_to = FT.Outline_MoveToFunc(move_to),
+            line_to = FT.Outline_LineToFunc(line_to),
+            conic_to = FT.Outline_ConicToFunc(conic_to),
+            cubic_to = FT.Outline_CubicToFunc(cubic_to),
+            shift = 0,
+            delta = 0,
+          )
+        check(ft.FT_Outline_Decompose(self.ftobj, ct.byref(funcs), ct.c_void_p(0)))
+    #end draw
 
 #end Outline
 
@@ -1287,7 +1439,7 @@ class Glyph :
     def outline(self) :
         assert self.ftobj.contents.format == FT.GLYPH_FORMAT_OUTLINE
         return \
-            Outline(ct.cast(self.ftobj, FT.OutlineGlyph).contents.outline, self, None)
+            Outline(ct.pointer(ct.cast(self.ftobj, FT.OutlineGlyph).contents.outline), self, None)
     #end outline
 
     @property
