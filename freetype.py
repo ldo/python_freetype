@@ -11,11 +11,14 @@
 from numbers import \
     Number
 import enum
+import array
 import ctypes as ct
 import struct
 import weakref
+import cairo
 
 ft = ct.cdll.LoadLibrary("libfreetype.so.6")
+libc = ct.cdll.LoadLibrary("libc.so.6")
 
 def struct_to_dict(item, itemtype, indirect, extra_decode = None) :
     "decodes the elements of a ctypes Structure into a dict. extra_decode" \
@@ -636,6 +639,9 @@ ft.FT_Get_First_Char.restype = ct.c_ulong
 ft.FT_Get_Next_Char.restype = ct.c_ulong
 ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
 
+libc.memcpy.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_size_t)
+libc.memcpy.restype = None
+
 class FTException(Exception) :
     "just to identify a FreeType-specific error exception."
 
@@ -798,6 +804,7 @@ class Face :
 
     @property
     def lib(self) :
+        # do I really need this?
         result = self._lib()
         assert result != None, "parent library has gone"
         return \
@@ -1029,8 +1036,13 @@ class GlyphSlot :
     @property
     def bitmap(self) :
         return \
-            self.ftobj.contents.bitmap # direct low-level access for now
+            Bitmap(ct.pointer(self.ftobj.contents.bitmap), self, None)
     #end bitmap
+
+    def own_bitmap(self) :
+        "ensures the GlyphSlot has its own copy of bitmap storage."
+        check(ft.FT_GlyphSlot_Own_Bitmap(self.ftobj))
+    #end own_bitmap
 
     def get_glyph(self) :
         result = FT.Glyph()
@@ -1073,9 +1085,9 @@ class Outline :
 
     def __init__(self, ftobj, owner, lib) :
         self.ftobj = ftobj
+        assert (owner != None) != (lib != None)
         if owner != None :
             self.owner = owner # keep a strong ref to ensure it doesn’t disappear unexpectedly
-            assert lib == None
             self._lib = None
         else :
             self.owner = None
@@ -1181,6 +1193,13 @@ class Glyph :
             Outline(ct.cast(self.ftobj, FT.OutlineGlyph).contents.outline, self, None)
     #end outline
 
+    @property
+    def bitmap(self) :
+        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        return \
+            Bitmap(ct.pointer(ct.cast(self.ftobj, FT.BitmapGlyph).contents.bitmap), self, None)
+    #end bitmap
+
 #end Glyph
 def_extra_fields \
   (
@@ -1195,4 +1214,131 @@ def_extra_fields \
         ),
   )
 
+class Bitmap :
+    "Pythonic representation of an FT.Bitmap. Get one of these from GlyphSlot.bitmap" \
+    " or Glyph.bitmap."
+    # TODO: Seems there are no public APIs for explicitly allocating storage for one of these;
+    # all the publicly-accessible Bitmap objects are owned by their containing structures.
+
+    def __init__(self, ftobj, owner, lib) :
+        # lib is not None if I am to manage my own storage, None if my storage is owned
+        # by a containing structure
+        self.ftobj = ftobj
+        assert (owner != None) != (lib != None)
+        if owner != None :
+            self.owner = owner # keep a strong ref to ensure it doesn’t disappear unexpectedly
+            self._lib = None
+        else :
+            self.owner = None
+            self._lib = weakref.ref(lib)
+        #end if
+    #end __init__
+
+    def __del__(self) :
+        if self.owner == None and self._lib != None and self._lib() != None :
+            if self.ftobj != None :
+                check(ft.FT_Bitmap_Done(self._lib(), self.ftobj))
+                self.ftobj = None
+            #end if
+        #end if
+    #end __del__
+
+    def make_image_surface(self) :
+        "creates a Cairo ImageSurface containing a copy of the Bitmap pixels." \
+        " Returns an ImageSurfaceHolder containing the ImageSurface and its associated" \
+        " pixel array."
+        # TODO: if I own the pixel buffer, could I use create_for_data rather
+        # than making a copy of the pixels?
+        if self.pixel_mode == FT.PIXEL_MODE_MONO :
+            cairo_format = cairo.FORMAT_A1
+        elif self.pixel_mode == FT.PIXEL_MODE_GRAY :
+            cairo_format = cairo.FORMAT_A8
+        else :
+            raise NotImplementedError("unsupported bitmap format %d" % self.pixel_mode)
+        #end if
+        if self.pitch < 0 :
+            raise NotImplementedError("can’t cope with negative bitmap pitch")
+        #end if
+        dst_pitch = cairo.ImageSurface.format_stride_for_width(cairo_format, self.width)
+        buffer_size = self.rows * dst_pitch
+        pixels = array.array("B", b"0" * buffer_size)
+        dst = pixels.buffer_info()[0]
+        src = ct.cast(self.ftobj.contents.buffer, ct.c_void_p).value
+        if dst_pitch == self.pitch :
+            libc.memcpy(dst, src, buffer_size)
+        else :
+            # have to copy a row at a time
+            assert dst_pitch > self.pitch
+            for i in range(0, self.rows) :
+                libc.memcpy(dst, src, self.pitch)
+                dst += dst_pitch
+                src += self.pitch
+            #end for
+        #end if
+        surface = cairo.ImageSurface.create_for_data \
+          (
+            pixels,
+            cairo_format,
+            self.width,
+            self.rows,
+            dst_pitch
+          )
+        return \
+            ImageSurfaceHolder(surface, pixels)
+    #end make_image_surface
+
+#end Bitmap
+def_extra_fields \
+  (
+    clas = Bitmap,
+    simple_fields =
+        (
+            ("rows", None),
+            ("width", None),
+            ("pitch", None),
+            ("num_grays", None),
+            ("pixel_mode", None),
+            ("palette_mode", None),
+        ),
+    struct_fields = ()
+  )
+
 del def_extra_fields # my job is done
+
+class ImageSurfaceHolder :
+    "holds a Cairo ImageSurface object together with the array containing its pixels." \
+    " Never keep a reference to the former without also keeping around a reference to" \
+    " its containing ImageSurfaceHolder, otherwise the latter is liable to disappear" \
+    " unexpectedly."
+
+    def __init__(self, surface, pixels) :
+        self._surface = surface
+        self._pixels = pixels
+    #end __init__
+
+    @property
+    def surface(self) :
+        "returns a reference to the ImageSurface. Only valid as long as you keep" \
+        " a reference to the parent ImageSurfaceHolder as well."
+        return \
+            self._surface
+    #end surface
+
+    def copy_surface(self) :
+        "returns a new ImageSurface containing its own copy of the pixels. You can" \
+        " safely keep this after discarding the ImageSurfaceHolder that created it."
+        result = cairo.ImageSurface \
+          (
+            self._surface.get_format(),
+            self._surface.get_width(),
+            self._surface.get_height()
+          )
+        tempdraw = cairo.Context(result)
+        tempdraw.set_operator(cairo.OPERATOR_SOURCE)
+        tempdraw.set_source_surface(self._surface)
+        tempdraw.paint()
+        return \
+            result
+    #end copy_surface
+
+#end ImageSurfaceHolder
