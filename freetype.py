@@ -802,15 +802,6 @@ class Face :
         #end for
     #end __init__
 
-    @property
-    def lib(self) :
-        # do I really need this?
-        result = self._lib()
-        assert result != None, "parent library has gone"
-        return \
-            result
-    #end lib
-
     def __del__(self) :
         if self.ftobj != None and self._lib() != None :
             # self._lib might have vanished prematurely during program exit
