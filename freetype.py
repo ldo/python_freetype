@@ -1244,9 +1244,7 @@ class Bitmap :
     #end __del__
 
     def make_image_surface(self) :
-        "creates a Cairo ImageSurface containing a copy of the Bitmap pixels." \
-        " Returns an ImageSurfaceHolder containing the ImageSurface and its associated" \
-        " pixel array."
+        "creates a Cairo ImageSurface containing a copy of the Bitmap pixels."
         # TODO: if I own the pixel buffer, could I use create_for_data rather
         # than making a copy of the pixels?
         if self.pixel_mode == FT.PIXEL_MODE_MONO :
@@ -1275,16 +1273,15 @@ class Bitmap :
                 src += self.pitch
             #end for
         #end if
-        surface = cairo.ImageSurface.create_for_data \
-          (
-            pixels,
-            cairo_format,
-            self.width,
-            self.rows,
-            dst_pitch
-          )
         return \
-            ImageSurfaceHolder(surface, pixels)
+            cairo.ImageSurface.create_for_data \
+              (
+                pixels,
+                cairo_format,
+                self.width,
+                self.rows,
+                dst_pitch
+              )
     #end make_image_surface
 
 #end Bitmap
@@ -1304,41 +1301,3 @@ def_extra_fields \
   )
 
 del def_extra_fields # my job is done
-
-class ImageSurfaceHolder :
-    "holds a Cairo ImageSurface object together with the array containing its pixels." \
-    " Never keep a reference to the former without also keeping around a reference to" \
-    " its containing ImageSurfaceHolder, otherwise the latter is liable to disappear" \
-    " unexpectedly."
-
-    def __init__(self, surface, pixels) :
-        self._surface = surface
-        self._pixels = pixels
-    #end __init__
-
-    @property
-    def surface(self) :
-        "returns a reference to the ImageSurface. Only valid as long as you keep" \
-        " a reference to the parent ImageSurfaceHolder as well."
-        return \
-            self._surface
-    #end surface
-
-    def copy_surface(self) :
-        "returns a new ImageSurface containing its own copy of the pixels. You can" \
-        " safely keep this after discarding the ImageSurfaceHolder that created it."
-        result = cairo.ImageSurface \
-          (
-            self._surface.get_format(),
-            self._surface.get_width(),
-            self._surface.get_height()
-          )
-        tempdraw = cairo.Context(result)
-        tempdraw.set_operator(cairo.OPERATOR_SOURCE)
-        tempdraw.set_source_surface(self._surface)
-        tempdraw.paint()
-        return \
-            result
-    #end copy_surface
-
-#end ImageSurfaceHolder
