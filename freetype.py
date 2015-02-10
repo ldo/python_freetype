@@ -1053,10 +1053,10 @@ def_extra_fields \
             ("format", from_tag),
             ("bitmap_left", None),
             ("bitmap_top", None),
+            ("advance", Vector.from_ft_f26_6),
         ),
     struct_fields =
         (
-            ("advance", FT.Vector, False, {None : from_f26_6}),
             ("metrics", FT.Glyph_Metrics, False, {None : from_f26_6}),
         ),
   )
@@ -1198,11 +1198,9 @@ def_extra_fields \
     simple_fields =
         (
             ("format", from_tag),
+            ("advance", Vector.from_ft_f16_16),
         ),
-    struct_fields =
-        (
-            ("advance", FT.Vector, False, {None : from_f16_16}),
-        ),
+    struct_fields = ()
   )
 
 class Bitmap :
