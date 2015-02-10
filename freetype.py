@@ -8,6 +8,7 @@
 # or later, to be compatible with FreeType itself.
 #-
 
+import math
 from numbers import \
     Number
 import enum
@@ -685,6 +686,11 @@ class Matrix :
         self.yy = yy
     #end __init__
 
+    def __repr__(self) :
+        return \
+            "Matrix(%.3f, %.3f, %.3f, %.3f)" % (self.xx, self.xy, self.yx, self.yy)
+    #end __repr__
+
     @staticmethod
     def from_ft(mat) :
         "creates a new Matrix from an FT.Matrix value."
@@ -705,6 +711,101 @@ class Matrix :
         return \
             FT.Matrix(**args)
     #end to_ft
+
+    # I do my own implementations of arithmetic operations, since I don’t see
+    # any point in wrapping the FreeType ones (unless you require lesser accuracy...)
+
+    def __mul__(m1, m2) :
+        "vector/matrix multiplication."
+        if isinstance(m2, Matrix) :
+            result = \
+                Matrix \
+                  (
+                    xx = m1.xx * m2.xx + m1.xy * m2.yx,
+                    xy = m1.xx * m2.xy + m1.xy * m2.yy,
+                    yx = m1.yx * m2.xx + m1.yy * m2.yx,
+                    yy = m1.yx * m2.xy + m1.yy * m2.yy,
+                  )
+        elif isinstance(m2, Vector) :
+            result = \
+                Vector \
+                  (
+                    x = m1.xx * m2.x + m1.xy * m2.y,
+                    y = m1.yx * m2.x + m1.yy * m2.y,
+                  )
+        else :
+            raise TypeError("Matrix can only multiply Vector or Matrix")
+        #end if
+        return \
+            result
+    #end __mul__
+
+    def det(m) :
+        "matrix determinant."
+        return \
+            m.xx * m.yy - m.xy * m.yx
+    #end det
+
+    def inv(m) :
+        "matrix inverse."
+        det = m.det()
+        return \
+            Matrix \
+              (
+                xx = m.yy / det,
+                xy = - m.xy / det,
+                yx = - m.yx / det,
+                yy = m.xx / det,
+              )
+    #end inv
+
+    def __truediv__(m1, m2) :
+        "division = multiplication by matrix inverse."
+        if not isinstance(m2, Matrix) :
+            raise TypeError("Matrix can only be divided by Matrix")
+        #end if
+        return \
+            m1.__mul__(m2.inv())
+    #end __truediv__
+
+    @property
+    def ident(self) :
+        "identity matrix."
+        return \
+            Matrix(xx = 1.0, xy = 0.0, yx = 0.0, yy = 1.0)
+    #end ident
+
+    @staticmethod
+    def scaling(sx, sy) :
+        "returns a Matrix that scales by the specified x- and y-factors."
+        return \
+            Matrix \
+              (
+                xx = sx,
+                xy = 0.0,
+                yx = 0.0,
+                yy = sy,
+              )
+    #end scaling
+
+    @staticmethod
+    def rotation(angle, degrees) :
+        "returns a Matrix that rotates by the specified angle, in degrees" \
+        " iff degrees, else radians."
+        if degrees :
+            angle = math.radians(angle)
+        #end if
+        cos = math.cos(angle)
+        sin = math.sin(angle)
+        return \
+            Matrix \
+              (
+                xx = cos,
+                xy = - sin,
+                yx = sin,
+                yy = cos,
+              )
+    #end rotation
 
 #end Matrix
 
