@@ -11,7 +11,6 @@
 import math
 from numbers import \
     Number
-import enum
 import array
 import ctypes as ct
 import struct
@@ -309,7 +308,6 @@ class FT :
             ]
     #end GlyphSlotRec
 
-    # TODO: define an enum and represent as a set rather than an integer?
     FACE_FLAG_SCALABLE = ( 1 <<  0 )
     FACE_FLAG_FIXED_SIZES = ( 1 <<  1 )
     FACE_FLAG_FIXED_WIDTH = ( 1 <<  2 )
@@ -326,7 +324,6 @@ class FT :
     FACE_FLAG_TRICKY = ( 1 << 13 )
     FACE_FLAG_COLOR = ( 1 << 14 )
 
-    # TODO: define an enum and represent as a set rather than an integer?
     STYLE_FLAG_ITALIC = ( 1 << 0 )
     STYLE_FLAG_BOLD = ( 1 << 1 )
 
@@ -402,7 +399,6 @@ class FT :
     #end Size_RequestRec
     Size_Request = ct.POINTER(Size_RequestRec)
 
-    # TODO: define an enum and represent as a set rather than an integer?
     LOAD_DEFAULT = 0x0
     LOAD_NO_SCALE = ( 1 << 0 )
     LOAD_NO_HINTING = ( 1 << 1 )
@@ -1204,13 +1200,10 @@ def_extra_fields \
         ),
   )
 
-@enum.unique
-class CURVEPT(enum.Enum) :
-    "types of control points for outline curves."
-    ON = 1 # on-curve (corner)
-    OFF2 = 0 # off-curve (quadratic Bézier segment)
-    OFF3 = 2 # off-curve (cubic Bézier segment)
-#end CURVEPT
+# types of control points for outline curves
+CURVEPT_ON = 1 # on-curve (corner)
+CURVEPT_OFF2 = 0 # off-curve (quadratic Bézier segment)
+CURVEPT_OFF3 = 2 # off-curve (cubic Bézier segment)
 
 class Outline :
     "Pythonic representation of an FT.Outline. Get one of these from GlyphSlot.outline."
@@ -1339,13 +1332,6 @@ class Outline :
                 point = ftobj.points[pointindex]
                 flag = ftobj.tags[pointindex]
                 pt_type = flag & 3
-                for c in CURVEPT :
-                    if c.value == pt_type :
-                        pt_type = c
-                        break
-                    #end if
-                #end for
-                assert isinstance(pt_type, CURVEPT)
                 contour.append((Vector.from_ft_int(point), pt_type, flag >> 32))
                   # interpreting coords as ints is a guess
                 if pointindex == endpoint :
