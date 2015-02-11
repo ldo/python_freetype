@@ -862,11 +862,6 @@ class Library :
     def __init__(self) :
         self.lib = ct.c_void_p(0)
         check(ft.FT_Init_FreeType(ct.byref(self.lib)))
-        ver_major = ct.c_int()
-        ver_minor = ct.c_int()
-        ver_patch = ct.c_int()
-        ft.FT_Library_Version(self.lib, ct.byref(ver_major), ct.byref(ver_minor), ct.byref(ver_patch))
-        self.version = (ver_major.value, ver_minor.value, ver_patch.value)
     #end __init__
 
     def __del__(self) :
@@ -875,6 +870,17 @@ class Library :
             self.lib.value = None
         #end if
     #end __del__
+
+    @property
+    def version(self) :
+        "returns the FreeType library version."
+        ver_major = ct.c_int()
+        ver_minor = ct.c_int()
+        ver_patch = ct.c_int()
+        ft.FT_Library_Version(self.lib, ct.byref(ver_major), ct.byref(ver_minor), ct.byref(ver_patch))
+        return \
+            (ver_major.value, ver_minor.value, ver_patch.value)
+    #end version
 
     def new_face(self, filename, face_index = 0) :
         "loads an FT.Face from a file and returns a Face object for it."
