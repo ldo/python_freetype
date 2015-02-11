@@ -1281,7 +1281,7 @@ class Outline :
         result = FT.BBox()
         check(ft.FT_Outline_Get_BBox(self.ftobj, ct.byref(result)))
         return \
-            struct_to_dict(result, FT.BBox, False, {None : from_f26_6})
+            struct_to_dict(result, FT.BBox, False, {None : int})
     #end get_bbox
 
     def get_bitmap(self, lib, the_bitmap) :
