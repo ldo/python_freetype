@@ -568,21 +568,31 @@ def def_extra_fields(clas, simple_fields, struct_fields) :
     # straightforward fashion to FT structure fields. Assumes the instance attribute
     # “ftobj” points to the FT object to be decoded.
 
-    def def_simple_attr(field, convert) :
+    def def_simple_attr(field, doc, convert) :
 
-        def attr(self) :
+        def simple_attr(self) :
+            return \
+                getattr(self.ftobj.contents, field)
+        #end simple_attr
+
+        def conv_attr(self) :
             return \
                 convert(getattr(self.ftobj.contents, field))
-        #end attr
+        #end conv_attr
 
     #begin def_simple_attr
-        if convert == None :
-            convert = lambda x : x
+        if convert != None :
+            prop = conv_attr
+        else :
+            prop = simple_attr
         #end if
-        setattr(clas, field, property(attr))
+        if doc != None :
+            prop.__doc__ = doc
+        #end if
+        setattr(clas, field, property(prop))
     #end def_simple_attr
 
-    def def_struct_attr(field, fieldtype, indirect, extra_decode) :
+    def def_struct_attr(field, fieldtype, indirect, doc, extra_decode) :
 
         def attr(self) :
             return \
@@ -596,15 +606,18 @@ def def_extra_fields(clas, simple_fields, struct_fields) :
         #end attr
 
     #begin def_struct_attr
+        if doc != None :
+            attr.__doc__ = doc
+        #end if
         setattr(clas, field, property(attr))
     #end def_struct_attr
 
 #begin def_extra_fields
-    for field, convert in simple_fields :
-        def_simple_attr(field, convert)
+    for field, doc, convert in simple_fields :
+        def_simple_attr(field, doc, convert)
     #end for
-    for field, fieldtype, indirect, extra_decode in struct_fields :
-        def_struct_attr(field, fieldtype, indirect, extra_decode)
+    for field, fieldtype, indirect, doc, extra_decode in struct_fields :
+        def_struct_attr(field, fieldtype, indirect, doc, extra_decode)
     #end for
 #end def_extra_fields
 
@@ -873,7 +886,7 @@ class Library :
 
     @property
     def version(self) :
-        "returns the FreeType library version."
+        "the FreeType library version, as a triple of integers: (major, minor, patch)."
         ver_major = ct.c_int()
         ver_minor = ct.c_int()
         ver_patch = ct.c_int()
@@ -1113,20 +1126,20 @@ def_extra_fields \
     clas = Face,
     simple_fields =
         (
-            ("units_per_EM", None),
-            ("ascender", None),
-            ("descender", None),
-            ("height", None),
-            ("max_advance_width", None),
-            ("max_advance_height", None),
-            ("underline_position", None),
-            ("underline_thickness", None),
+            ("units_per_EM", "integer font units per em square (scalable fonts only)", None),
+            ("ascender", "typographic ascender in font units (scalable fonts only)", None),
+            ("descender", "typographic descender in font units, typically negative (scalable fonts only)", None),
+            ("height", "vertical distance between successive lines, in font units, always positive (scalable fonts only)", None),
+            ("max_advance_width", "maximum advance width in font units (scalable fonts only)", None),
+            ("max_advance_height", "maximum advance height for vertical layouts (scalable fonts only)", None),
+            ("underline_position", "position in font units of underline (scalable fonts only)", None),
+            ("underline_thickness", "thickness in font units of underline (scalable fonts only)", None),
         ),
     struct_fields =
         (
-            ("bbox", FT.BBox, False, None),
+            ("bbox", FT.BBox, False, "bounding box in font units, big enough to contain any glyph (scalable fonts only)", None),
             (
-                "size", FT.SizeRec, True,
+                "size", FT.SizeRec, True, "current active size",
                 {
                     "metrics" :
                         lambda x :
@@ -1147,7 +1160,7 @@ def_extra_fields \
                               )
                 },
             ),
-            ("charmap", FT.CharMapRec, True, {"encoding" : from_tag}),
+            ("charmap", FT.CharMapRec, True, "current active charmap", {"encoding" : from_tag}),
         ),
   )
 
@@ -1206,16 +1219,19 @@ def_extra_fields \
     clas = GlyphSlot,
     simple_fields =
         (
-            ("linearHoriAdvance", from_f16_16),
-            ("linearVertAdvance", from_f16_16),
-            ("format", from_tag),
-            ("bitmap_left", None),
-            ("bitmap_top", None),
-            ("advance", Vector.from_ft_f26_6),
+            ("linearHoriAdvance", "advance width of unhinted outline glyph", from_f16_16),
+            ("linearVertAdvance", "advance height of unhinted outline glyph", from_f16_16),
+            ("format",
+                "glyph format, typically FT.GLYPH_FORMAT_BITMAP, FT.GLYPH_FORMAT_OUTLINE"
+                " or FT.GLYPH_FORMAT_COMPOSITE",
+                from_tag),
+            ("bitmap_left", "bitmap left bearing in integer pixels (only if glyph is a bitmap)", None),
+            ("bitmap_top", "bitmap top bearing in integer pixels (only if glyph is a bitmap)", None),
+            ("advance", "transformed (hinted) advance in (possibly fractional) pixels", Vector.from_ft_f26_6),
         ),
     struct_fields =
         (
-            ("metrics", FT.Glyph_Metrics, False, {None : from_f26_6}),
+            ("metrics", FT.Glyph_Metrics, False, "metrics of last loaded glyph in slot", {None : from_f26_6}),
         ),
   )
 
@@ -1423,7 +1439,10 @@ def_extra_fields \
     clas = Outline,
     simple_fields =
         (
-            ("flags", None),
+            ("flags",
+                "bits that characterize the outline and give hints to the"
+                " scan-converter and hinter. See FT.OUTLINE_XXX",
+                None),
         ),
     struct_fields = ()
   )
@@ -1495,8 +1514,11 @@ def_extra_fields \
     clas = Glyph,
     simple_fields =
         (
-            ("format", from_tag),
-            ("advance", Vector.from_ft_f16_16),
+            ("format",
+                "glyph format, typically FT.GLYPH_FORMAT_BITMAP, FT.GLYPH_FORMAT_OUTLINE"
+                " or FT.GLYPH_FORMAT_COMPOSITE",
+                from_tag),
+            ("advance", "glyph advance width", Vector.from_ft_f16_16),
         ),
     struct_fields = ()
   )
@@ -1673,12 +1695,12 @@ def_extra_fields \
     clas = Bitmap,
     simple_fields =
         (
-            ("rows", None),
-            ("width", None),
-            ("pitch", None),
-            ("num_grays", None),
-            ("pixel_mode", None),
-            ("palette_mode", None),
+            ("rows", "bitmap height in pixels", None),
+            ("width", "bitmap width in pixels", None),
+            ("pitch", "number of bytes actually occupied by each row of pixels", None),
+            ("num_grays", "number of grey levels used, only if pixel_mode = FT.PIXEL_MODE_GRAY", None),
+            ("pixel_mode", "see FT.PIXEL_MODE_XXX", None),
+            ("palette_mode", "not used", None),
         ),
     struct_fields = ()
   )
