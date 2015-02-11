@@ -492,6 +492,13 @@ class FT :
         ]
     #end Outline_Funcs
 
+    Orientation = ct.c_uint
+    ORIENTATION_TRUETYPE = 0
+    ORIENTATION_POSTSCRIPT = 1
+    ORIENTATION_FILL_RIGHT = ORIENTATION_TRUETYPE
+    ORIENTATION_FILL_LEFT = ORIENTATION_POSTSCRIPT
+    ORIENTATION_NONE = 2
+
 #end FT
 
 # not sure that any of these are really necessary...
@@ -1292,7 +1299,12 @@ class Outline :
         check(ft.FT_Outline_Get_Bitmap(lib.lib, self.ftobj, the_bitmap.ftobj))
     #end get_bitmap
 
-    # TODO: FT_Outline_Render, FT_Outline_Get_Orientation
+    def get_orientation(self) :
+        return \
+            ft.FT_Outline_Get_Orientation(self.ftobj)
+    #end get_orientation
+
+    # TODO: FT_Outline_Render
     # TODO: do I need more direct access to FT_Outline_Decompose?
     # Or is draw method (below) sufficient?
 
