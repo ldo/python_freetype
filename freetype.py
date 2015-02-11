@@ -217,6 +217,18 @@ class FT :
     #end SizeRec
     Size = ct.POINTER(SizeRec)
 
+    # values for Outline.flags
+    OUTLINE_NONE = 0x0
+    OUTLINE_OWNER = 0x1
+    OUTLINE_EVEN_ODD_FILL = 0x2
+    OUTLINE_REVERSE_FILL = 0x4
+    OUTLINE_IGNORE_DROPOUTS = 0x8
+    OUTLINE_SMART_DROPOUTS = 0x10
+    OUTLINE_INCLUDE_STUBS = 0x20
+
+    OUTLINE_HIGH_PRECISION = 0x100
+    OUTLINE_SINGLE_PASS = 0x200
+
     class Outline(ct.Structure) :
         pass
     Outline._fields_ = \
@@ -1401,6 +1413,15 @@ class Outline :
     #end draw
 
 #end Outline
+def_extra_fields \
+  (
+    clas = Outline,
+    simple_fields =
+        (
+            ("flags", None),
+        ),
+    struct_fields = ()
+  )
 
 class Glyph :
     "Pythonic representation of an FT.Glyph. Get one of these from GlyphSlot.get_glyph."
