@@ -840,6 +840,19 @@ class Matrix :
               )
     #end rotation
 
+    @staticmethod
+    def skewing(x_skew, y_skew) :
+        "returns a Matrix that skews in the x- and y-directions by the specified amounts."
+        return \
+            Matrix \
+              (
+                xx = 1,
+                xy = x_skew,
+                yx = y_skew,
+                yy = 1
+              )
+    #end skewing
+
 #end Matrix
 
 class Library :
