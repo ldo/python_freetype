@@ -74,7 +74,11 @@ Determine its bounding box:
 
     bbox = outl.get_bbox()
 
-Set up a Cairo context so the glyph will render the right way up:
+The default FreeType coordinate system puts the origin at lower-left
+(y-coordinates increasing upwards), whereas Cairo by default puts the
+origin at the upper-left (y-coordinates increasing downwards). So the
+Cairo context needs to have a vertical-flip transformation applied
+to make the glyph render the right way up:
 
     g = cairo.Context(...)
     ... further initialization of g ...
