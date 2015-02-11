@@ -1250,12 +1250,12 @@ class Outline :
 
     def embolden(self, strength) :
         "uniformly emboldens the Outline."
-        check(ft.FT_Outline_Embolden(self.ftobj, to_ft26_6(strength)))
+        check(ft.FT_Outline_Embolden(self.ftobj, to_f26_6(strength)))
     #end embolden
 
     def embolden_xy(self, x_strength, y_strength) :
         "non-uniformly emboldens the Outline."
-        check(ft.FT_Outline_EmboldenXY(self.ftobj, to_ft26_6(x_strength), to_ft26_6(y_strength)))
+        check(ft.FT_Outline_EmboldenXY(self.ftobj, to_f26_6(x_strength), to_f26_6(y_strength)))
     #end embolden
 
     def reverse(self) :
