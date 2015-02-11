@@ -1,0 +1,120 @@
+python_freetype is a high-level Python 3 binding for the
+[FreeType](http://www.freetype.org) font-rendering library. It is
+implemented entirely in Python, using ctypes. FreeType objects are
+wrapped in Python objects, with public structure fields accessible as
+read-only attributes of those objects, and object-specific routine
+calls done via methods of those objects. In usual Python fashion, you
+never have to explicitly dispose of anything: the lifetimes of the
+FreeType objects are automatically managed in sync with the lifetimes
+of their Python wrappers.
+
+Method names drop “FT_” prefixes and object-type-specific parts of
+names: thus, the FreeType call “FT_Outline_Transform” is wrapped by a
+method simply called “transform”, defined on Outline objects.
+
+FreeType API constants are currently defined within a class
+called freetype.FT. This also contains lower-level ctypes-based
+definitions for encoding and decoding FreeType API structures.
+You will need to use the constants, but you can ignore the lower-level
+ctypes structures. The constants are defined with the “FT_” prefix omitted,
+since they are already inside a namespace called “FT”.
+
+This library also provides convenience routines for interoperating
+with [Pycairo](http://cairographics.org/documentation/pycairo/3/): you
+can create a cairo.ImageSurface from a freetype.Bitmap, and you can
+construct a cairo.Path from a freetype.Outline.
+
+WARNING: This Python binding is still to be considered in a state of
+flux for now, subject to whatever reorganization looks to be necessary
+as experience is gained with using it.
+
+Basic Usage
+===========
+
+To initialize FreeType, simply create an instance of the Library object:
+
+    lib = freetype.Library()
+
+To load a Face, use the library’s new_face method (“font_filename”
+must be the full path to the font filename):
+
+    face = lib.new_face(font_filename, 0)
+
+Set the character size for rendering:
+
+    face.set_char_size(height = 72, horz_resolution = 90)
+
+Load the glyph for a character code:
+
+    face.load_char(ord("€"), freetype.FT.LOAD_DEFAULT)
+
+Render the glyph to a bitmap:
+
+    face.glyph.render_glyph(freetype.FT.RENDER_MODE_NORMAL)
+
+Obtain a Pycairo ImageSurface object from the bitmap:
+
+    surf = face.glyph.bitmap.make_image_surface()
+
+And save the bitmap to a PNG file:
+
+    surf.write_to_png("test.png")
+
+This will show the glyph as white against a black background; to get
+other colour schemes, you can of course use more elaborate Cairo calls
+like Context.mask_surface, or Context.set_source_surface with
+different operators.
+
+Alternatively, after the load_char call, instead of getting a bitmap
+from FreeType, you can obtain the scalable outline:
+
+    outl = face.glyph_outline
+
+Determine its bounding box:
+
+    bbox = outl.get_bbox()
+
+Set up a Cairo context so the glyph will render the right way up:
+
+    g = cairo.Context(...)
+    ... further initialization of g ...
+    m = cairo.Matrix()
+    m.translate(0, + (bbox["yMax"] - bbox["yMin"]) / 2)
+    m.scale(1, -1)
+    m.translate(0, - (bbox["yMax"] - bbox["yMin"]) / 2)
+    g.transform(m)
+
+Draw the outline as a Cairo path into the context:
+
+    g.new_path()
+    outl.draw(g)
+
+Fill or stroke it with some suitable colour or pattern, e.g.
+
+    g.set_source_rgba(0, 0, 0, 1)
+    g.fill()
+
+And so on.
+
+Vectors And Matrices
+====================
+
+This module provides Vector and Matrix types which aim to be more
+convenient to use than the original FreeType types. For example, to
+multiply two matrices m1 and m2, you can just use the simple Python
+expression “m1 * m2”; to multiply m1 by the inverse of m2, you can
+write “m1 * m2.inv()”, or even more simply, express it as a division:
+“m1 / m2”. To transform a vector v by a matrix m, premultiply it by
+the matrix: “m * v”. All Vector and Matrix operations are *functional*,
+not *procedural*: they construct and return new objects, leaving the
+originals unchanged.
+
+As a further convenience, the components of these vectors and matrices
+are regular Python floating-point numbers, so you don’t have to worry
+about the right fixed-point scaling to apply.
+
+These objects are automatically converted to the underlying FreeType
+types, with the right scaling, where appropriate.
+
+Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
+2015 February 11
