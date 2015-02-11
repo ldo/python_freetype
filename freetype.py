@@ -248,7 +248,7 @@ class FT :
                 ("rows", ct.c_int),
                 ("width", ct.c_int),
                 ("pitch", ct.c_int),
-                ("buffer", ct.POINTER(ct.c_ubyte)),
+                ("buffer", ct.c_void_p),
                 ("num_grays", ct.c_short),
                 ("pixel_mode", ct.c_byte),
                 ("palette_mode", ct.c_byte),
@@ -1285,14 +1285,16 @@ class Outline :
     #end get_bbox
 
     def get_bitmap(self, lib, the_bitmap) :
-        "renders the Outline into the pre-existing Bitmap."
+        "renders the Outline into the pre-existing Bitmap. FIXME: doesn’t seem to do anything."
         if not isinstance(the_bitmap, Bitmap) :
             raise TypeError("expecting a Bitmap")
         #end if
-        check(ft.FT_Outline_Get_Bitmap(lib.lib, self.ftobj, ct.byref(the_bitmap.ftobj)))
+        check(ft.FT_Outline_Get_Bitmap(lib.lib, self.ftobj, the_bitmap.ftobj))
     #end get_bitmap
 
-    # TODO: FT_Outline_Render, FT_Outline_Get_Orientation, FT_Outline_Decompose?
+    # TODO: FT_Outline_Render, FT_Outline_Get_Orientation
+    # TODO: do I need more direct access to FT_Outline_Decompose?
+    # Or is draw method (below) sufficient?
 
     # end of wrappers for outline-processing functions
 
@@ -1462,27 +1464,28 @@ def_extra_fields \
   )
 
 class Bitmap :
-    "Pythonic representation of an FT.Bitmap. Get one of these from GlyphSlot.bitmap" \
-    " or Glyph.bitmap."
-    # TODO: Seems there are no public APIs for explicitly allocating storage for one of these;
+    "Pythonic representation of an FT.Bitmap. Get one of these from GlyphSlot.bitmap," \
+    " Glyph.bitmap, Outline.get_bitmap() or Bitmap.new_with_array()."
+    # Seems there are no public APIs for explicitly allocating storage for one of these;
     # all the publicly-accessible Bitmap objects are owned by their containing structures.
 
     def __init__(self, ftobj, owner, lib) :
-        # lib is not None if I am to manage my own storage, None if my storage is owned
-        # by a containing structure
+        # lib is not None if I am to manage my own storage under control of FreeType;
+        # owner is not None if it is the containing structure that owns my storage.
         self.ftobj = ftobj
-        assert (owner != None) != (lib != None)
+        self.buffer = None
+        assert owner == None or lib == None
         if owner != None :
             self.owner = owner # keep a strong ref to ensure it doesn’t disappear unexpectedly
             self._lib = None
-        else :
+        elif lib != None :
             self.owner = None
             self._lib = weakref.ref(lib)
         #end if
     #end __init__
 
     def __del__(self) :
-        if self.owner == None and self._lib != None and self._lib() != None :
+        if self.buffer == None and self._lib != None and self._lib() != None :
             if self.ftobj != None :
                 check(ft.FT_Bitmap_Done(self._lib(), self.ftobj))
                 self.ftobj = None
@@ -1490,11 +1493,66 @@ class Bitmap :
         #end if
     #end __del__
 
+    @staticmethod
+    def new_with_array(width, rows, pitch = None, bg = 0.0) :
+        "constructs a Bitmap with storage residing in a Python array. The pixel" \
+        " format is always PIXEL_MODE_GRAY."
+        if pitch == None :
+            pitch = cairo.ImageSurface.format_stride_for_width(cairo.FORMAT_A8, width)
+              # simplify conversion to cairo.ImageSurface
+        else :
+            assert pitch >= width, "bitmap cannot fit specified width"
+        #end if
+        buffer = array.array("B", bytes((round(bg * 255),)) * rows * pitch)
+        result = FT.Bitmap()
+        ft.FT_Bitmap_New(ct.byref(result))
+        result.rows = rows
+        result.width = width
+        result.pitch = pitch
+        result.pixel_mode = FT.PIXEL_MODE_GRAY
+        result.buffer = ct.cast(buffer.buffer_info()[0], ct.c_void_p)
+        result.num_grays = 256
+        result = Bitmap(ct.pointer(result), None, None)
+        result.buffer = buffer
+        return \
+            result
+    #end new_with_array
+
+    def copy_with_array(self) :
+        "returns a new Bitmap which is a copy of this one, with storage residing in" \
+        " a Python array."
+        src = self.ftobj.contents
+        dst = FT.Bitmap()
+        ft.FT_Bitmap_New(ct.byref(dst))
+        for \
+            attr \
+        in \
+            (
+                "rows",
+                "width",
+                "pitch",
+                "num_grays",
+                "pixel_mode",
+            ) \
+        :
+            setattr(dst, attr, getattr(src, attr))
+        #end for
+        buffer_size = src.rows * src.pitch
+        buffer = array.array("B", b"0" * buffer_size)
+        dst.buffer = ct.cast(buffer.buffer_info()[0], ct.c_void_p)
+        libc.memcpy(dst.buffer, src.buffer, buffer_size)
+        result = Bitmap(ct.pointer(dst), None, None)
+        result.buffer = buffer
+        return \
+            result
+    #end copy_with_array
+
     # wrappers for FT.Bitmap functions
     # <http://www.freetype.org/freetype2/docs/reference/ft2-bitmap_handling.html>
 
     def copy(self, lib) :
-        "returns a new Bitmap which is a copy of this one."
+        "returns a new Bitmap which is a copy of this one, with storage" \
+        " allocated by the specified Library."
         result = ct.pointer(FT.Bitmap())
         ft.FT_Bitmap_New(result)
         check(ft.FT_Bitmap_Copy(lib.lib, self.ftobj, result))
@@ -1505,6 +1563,7 @@ class Bitmap :
     def embolden(self, lib, x_strength, y_strength) :
         "emboldens the bitmap by about the specified number of pixels horizontally and" \
         " vertically. lib is a Library object."
+        assert self.buffer == None, "cannot embolden unless storage belongs to FreeType"
         check(ft.FT_Bitmap_Embolden
           (
             lib.lib,
@@ -1526,10 +1585,8 @@ class Bitmap :
 
     # end wrappers for FT.Bitmap functions
 
-    def make_image_surface(self) :
-        "creates a Cairo ImageSurface containing a copy of the Bitmap pixels."
-        # TODO: if I own the pixel buffer, could I use create_for_data rather
-        # than making a copy of the pixels?
+    def make_image_surface(self, copy = True) :
+        "creates a Cairo ImageSurface containing (a copy of) the Bitmap pixels."
         if self.pixel_mode == FT.PIXEL_MODE_MONO :
             cairo_format = cairo.FORMAT_A1
         elif self.pixel_mode == FT.PIXEL_MODE_GRAY :
@@ -1537,24 +1594,29 @@ class Bitmap :
         else :
             raise NotImplementedError("unsupported bitmap format %d" % self.pixel_mode)
         #end if
-        if self.pitch < 0 :
+        src_pitch = self.pitch
+        if src_pitch < 0 :
             raise NotImplementedError("can’t cope with negative bitmap pitch")
         #end if
         dst_pitch = cairo.ImageSurface.format_stride_for_width(cairo_format, self.width)
-        buffer_size = self.rows * dst_pitch
-        pixels = array.array("B", b"0" * buffer_size)
-        dst = pixels.buffer_info()[0]
-        src = ct.cast(self.ftobj.contents.buffer, ct.c_void_p).value
-        if dst_pitch == self.pitch :
-            libc.memcpy(dst, src, buffer_size)
+        if not copy and dst_pitch == src_pitch and self.buffer != None :
+            pixels = self.buffer
         else :
-            # have to copy a row at a time
-            assert dst_pitch > self.pitch
-            for i in range(0, self.rows) :
-                libc.memcpy(dst, src, self.pitch)
-                dst += dst_pitch
-                src += self.pitch
-            #end for
+            buffer_size = self.rows * dst_pitch
+            pixels = array.array("B", b"0" * buffer_size)
+            dst = pixels.buffer_info()[0]
+            src = ct.cast(self.ftobj.contents.buffer, ct.c_void_p).value
+            if dst_pitch == src_pitch :
+                libc.memcpy(dst, src, buffer_size)
+            else :
+                # have to copy a row at a time
+                assert dst_pitch > src_pitch
+                for i in range(0, self.rows) :
+                    libc.memcpy(dst, src, src_pitch)
+                    dst += dst_pitch
+                    src += src_pitch
+                #end for
+            #end if
         #end if
         return \
             cairo.ImageSurface.create_for_data \
