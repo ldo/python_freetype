@@ -983,7 +983,7 @@ class Face :
 
     @property
     def font_format(self) :
-        "returns the font format."
+        "the font format."
         return \
             ft.FT_Get_X11_Font_Format(self.ftobj).decode("utf-8")
     #end font_format
@@ -1082,7 +1082,7 @@ class Face :
 
     @property
     def glyph(self) :
-        "returns the first or only glyph slot."
+        "the first or only glyph slot."
         return \
             GlyphSlot(self.ftobj.contents.glyph)
     #end glyph
@@ -1174,6 +1174,7 @@ class GlyphSlot :
 
     @property
     def next(self) :
+        "link to next GlyphSlot, if any."
         try :
             result = GlyphSlot(self.ftobj.contents.next)
             _ = result.advance # check it's not just wrapping a null pointer
@@ -1186,6 +1187,8 @@ class GlyphSlot :
 
     @property
     def outline(self) :
+        "the Outline, if format = FT.GLYPH_FORMAT_OUTLINE."
+        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_OUTLINE
         return \
             Outline(ct.pointer(self.ftobj.contents.outline), self, None)
     #end outline
@@ -1197,9 +1200,27 @@ class GlyphSlot :
 
     @property
     def bitmap(self) :
+        "the Bitmap, if format = FT.GLYPH_FORMAT_BITMAP."
+        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
         return \
             Bitmap(ct.pointer(self.ftobj.contents.bitmap), self, None)
     #end bitmap
+
+    @property
+    def bitmap_left(self) :
+        "bitmap left bearing in integer pixels (only if glyph is a bitmap)"
+        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        return \
+            self.ftobj.contents.bitmap_left
+    #end bitmap_left
+
+    @property
+    def bitmap_top(self) :
+        "bitmap top bearing in integer pixels (only if glyph is a bitmap)"
+        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        return \
+            self.ftobj.contents.bitmap_top
+    #end bitmap_left
 
     def own_bitmap(self) :
         "ensures the GlyphSlot has its own copy of bitmap storage."
@@ -1225,8 +1246,6 @@ def_extra_fields \
                 "glyph format, typically FT.GLYPH_FORMAT_BITMAP, FT.GLYPH_FORMAT_OUTLINE"
                 " or FT.GLYPH_FORMAT_COMPOSITE",
                 from_tag),
-            ("bitmap_left", "bitmap left bearing in integer pixels (only if glyph is a bitmap)", None),
-            ("bitmap_top", "bitmap top bearing in integer pixels (only if glyph is a bitmap)", None),
             ("advance", "transformed (hinted) advance in (possibly fractional) pixels", Vector.from_ft_f26_6),
         ),
     struct_fields =
@@ -1352,7 +1371,7 @@ class Outline :
 
     @property
     def contours(self) :
-        "returns a tuple of the contours of the outline. Each element is a tuple of curve" \
+        "a tuple of the contours of the outline. Each element is a tuple of curve" \
         " points, each in turn being a triple (coord : Vector, point_type : CURVEPT, dropout_flags : int)."
         result = []
         pointindex = 0
@@ -1496,13 +1515,31 @@ class Glyph :
 
     @property
     def outline(self) :
+        "the Outline, if format = FT.GLYPH_FORMAT_OUTLINE."
         assert self.ftobj.contents.format == FT.GLYPH_FORMAT_OUTLINE
         return \
             Outline(ct.pointer(ct.cast(self.ftobj, FT.OutlineGlyph).contents.outline), self, None)
     #end outline
 
     @property
+    def left(self) :
+        "bitmap left bearing in integer pixels (only if glyph is a bitmap)"
+        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        return \
+            ct.cast(self.ftobj, FT.BitmapGlyph).contents.left
+    #end left
+
+    @property
+    def top(self) :
+        "bitmap top bearing in integer pixels (only if glyph is a bitmap)"
+        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        return \
+            ct.cast(self.ftobj, FT.BitmapGlyph).contents.top
+    #end top
+
+    @property
     def bitmap(self) :
+        "the Bitmap, if format = FT.GLYPH_FORMAT_BITMAP."
         assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
         return \
             Bitmap(ct.pointer(ct.cast(self.ftobj, FT.BitmapGlyph).contents.bitmap), self, None)
