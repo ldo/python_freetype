@@ -24,6 +24,9 @@ with [Pycairo](http://cairographics.org/documentation/pycairo/3/): you
 can create a cairo.ImageSurface from a freetype.Bitmap, and you can
 construct a cairo.Path from a freetype.Outline.
 
+If Fontconfig is available, you can also load a font by matching
+a Fontconfig pattern.
+
 WARNING: This Python binding is still to be considered in a state of
 flux for now, subject to whatever reorganization looks to be necessary
 as experience is gained with using it.
@@ -31,14 +34,26 @@ as experience is gained with using it.
 Basic Usage
 ===========
 
-To initialize FreeType, simply create an instance of the Library object:
+To initialize FreeType, create an instance of the Library object:
 
     lib = freetype.Library()
 
-To load a Face, use the library’s new_face method (“font_filename”
-must be the full path to the font filename):
+To load a Face from a specific font file, use the library’s new_face
+method, e.g.:
 
-    face = lib.new_face(font_filename, 0)
+    face = lib.new_face("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf")
+
+Alternatively, you can find a font by matching against a Fontconfig
+pattern string, e.g.:
+
+    face = lib.find_face("times")
+    face = lib.find_face("palatino:style=italic:weight=1000")
+    face = lib.find_face("sans-serif:slant=500")
+
+You can find out which font file was actually loaded, along with the
+font family name and style name, by looking at attributes of the Face:
+
+    print((face.filename, face.family_name, face.style_name))
 
 Set the character size for rendering:
 
@@ -121,4 +136,4 @@ These objects are automatically converted to the underlying FreeType
 types, with the right scaling, where appropriate.
 
 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
-2015 February 11
+2015 February 12

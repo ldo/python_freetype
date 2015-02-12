@@ -1001,7 +1001,8 @@ class Library :
 #end Library
 
 class Face :
-    "represents an FT.Face. Do not instantiate directly; call Library.new_face instead."
+    "represents an FT.Face. Do not instantiate directly; call Library.new_face" \
+    " or Library.find_face instead."
 
     def __init__(self, lib, face, filename) :
         self.ftobj = face
