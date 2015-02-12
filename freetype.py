@@ -18,6 +18,16 @@ import weakref
 import cairo
 
 ft = ct.cdll.LoadLibrary("libfreetype.so.6")
+try :
+    fc = ct.cdll.LoadLibrary("libfontconfig.so.1")
+except OSError as fail :
+    if True : # if fail.errno == 2 : # ENOENT
+      # no point checking, because it is None! (Bug?)
+        fc = None
+    else :
+        raise
+    #end if
+#end try
 libc = ct.cdll.LoadLibrary("libc.so.6")
 
 def struct_to_dict(item, itemtype, indirect, extra_decode = None) :
@@ -521,6 +531,58 @@ ft.FT_Get_First_Char.restype = ct.c_ulong
 ft.FT_Get_Next_Char.restype = ct.c_ulong
 ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
 
+if fc != None :
+    fc.FcInit.restype = ct.c_bool
+    fc.FcNameParse.argtypes = (ct.c_char_p,)
+    fc.FcNameParse.restype = ct.c_void_p
+    fc.FcConfigSubstitute.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_int)
+    fc.FcConfigSubstitute.restype = ct.c_bool
+    fc.FcDefaultSubstitute.argtypes = (ct.c_void_p,)
+    fc.FcDefaultSubstitute.restype = None
+    fc.FcPatternGetString.argtypes = (ct.c_void_p, ct.c_char_p, ct.c_void_p, ct.c_void_p)
+    fc.FcPatternGetString.restype = ct.c_int
+    fc.FcPatternDestroy.argtypes = (ct.c_void_p,)
+    fc.FcPatternDestroy.restype = None
+
+    class FC :
+        "minimal Fontconfig interface, just sufficient for my needs."
+
+        FcMatchPattern = 0
+        FcResultMatch = 0
+
+    #end FC
+
+    class FcPatternManager :
+        "context manager which collects a list of FcPattern objects requiring disposal."
+
+        def __init__(self) :
+            self.to_dispose = []
+        #end __init__
+
+        def __enter__(self) :
+            return \
+                self
+        #end __enter__
+
+        def collect(self, pattern) :
+            "collects another FcPattern reference to be disposed."
+            if pattern != 0 :
+                self.to_dispose.append(pattern)
+            #end if
+            return \
+                pattern
+        #end collect
+
+        def __exit__(self, exception_type, exception_value, traceback) :
+            for pattern in self.to_dispose :
+                fc.FcPatternDestroy(pattern)
+            #end for
+        #end __exit__
+
+    #end FcPatternManager
+
+#end if
+
 libc.memcpy.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_size_t)
 libc.memcpy.restype = None
 
@@ -869,8 +931,8 @@ class Matrix :
 #end Matrix
 
 class Library :
-    "Instantiate this to open the FreeType library. Use the new_face method to" \
-    " open a font file and construct a new Face object."
+    "Instantiate this to open the FreeType library. Use the new_face or find_face" \
+    " methods to open a font file and construct a new Face object."
 
     def __init__(self) :
         self.lib = ct.c_void_p(0)
@@ -900,18 +962,52 @@ class Library :
         result_face = FT.Face()
         check(ft.FT_New_Face(self.lib, filename.encode("utf-8"), face_index, ct.byref(result_face)))
         return \
-            Face(self, result_face)
+            Face(self, result_face, filename)
     #end new_face
+
+    def find_face(self, pattern, face_index = 0) :
+        "finds a font file by trying to match a Fontconfig pattern string, loads an FT.Face" \
+        " from it and returns a Face object."
+        if fc == None :
+            raise NotImplementedError("Fontconfig not available")
+        #end if
+        if not fc.FcInit() :
+            raise RuntimeError("failed to initialize Fontconfig.")
+        #end if
+        with FcPatternManager() as patterns :
+            search_pattern = patterns.collect(fc.FcNameParse(pattern.encode("utf-8")))
+            if search_pattern == 0 :
+                raise RuntimeError("cannot parse font name pattern")
+            #end if
+            if not fc.FcConfigSubstitute(None, search_pattern, FC.FcMatchPattern) :
+                raise RuntimeError("cannot substitute font configuration")
+            #end if
+            fc.FcDefaultSubstitute(search_pattern)
+            match_result = ct.c_int()
+            found_pattern = patterns.collect(fc.FcFontMatch(None, search_pattern, ct.byref(match_result)))
+            if found_pattern == 0 or match_result.value != FC.FcResultMatch :
+                raise RuntimeError("cannot match font name")
+            #end if
+            name_ptr = ct.c_char_p()
+            if fc.FcPatternGetString(found_pattern, b"file", 0, ct.byref(name_ptr)) != FC.FcResultMatch :
+                raise RuntimeError("cannot get font file name")
+            #end if
+            found_filename = name_ptr.value.decode("utf-8")
+        #end with
+        return \
+            self.new_face(found_filename, face_index)
+    #end find_face
 
 #end Library
 
 class Face :
     "represents an FT.Face. Do not instantiate directly; call Library.new_face instead."
 
-    def __init__(self, lib, face) :
+    def __init__(self, lib, face, filename) :
         self.ftobj = face
         self._lib = weakref.ref(lib)
         facerec = ct.cast(self.ftobj, FT.Face).contents
+        self.filename = filename
         # following attrs don't change, but perhaps it is simpler to define them
         # via def_extra_fields anyway
         for \
