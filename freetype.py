@@ -1622,6 +1622,7 @@ class Outline :
             that_nr_contours * ct.sizeof(ct.c_short)
           )
         result.contents.flags = self.ftobj.contents.flags # good enough?
+        check(ft.FT_Outline_Done(self._lib().lib, self.ftobj))
         self.ftobj = result
     #end _append
 
@@ -2035,6 +2036,7 @@ class Stroker :
         temp.contents.n_contours = 0
         ft.FT_Stroker_ExportBorder(self.ftobj, border, temp)
         outline._append(temp)
+        check(ft.FT_Outline_Done(self._lib().lib, temp))
     #end export_border
 
     def get_counts(self) :
@@ -2064,6 +2066,7 @@ class Stroker :
         temp.contents.n_contours = 0
         ft.FT_Stroker_Export(self.ftobj, temp)
         outline._append(temp)
+        check(ft.FT_Outline_Done(self._lib().lib, temp))
     #end export
 
 #end Stroker
