@@ -1378,7 +1378,7 @@ class Outline :
     def __del__(self) :
         if self.owner == None and self._lib != None and self._lib() != None :
             if self.ftobj != None :
-                check(ft.FT_Outline_Done(self._lib(), self.ftobj))
+                check(ft.FT_Outline_Done(self._lib().lib, self.ftobj))
                 self.ftobj = None
             #end if
         #end if
@@ -1688,7 +1688,7 @@ class Bitmap :
     def __del__(self) :
         if self.buffer == None and self._lib != None and self._lib() != None :
             if self.ftobj != None :
-                check(ft.FT_Bitmap_Done(self._lib(), self.ftobj))
+                check(ft.FT_Bitmap_Done(self._lib().lib, self.ftobj))
                 self.ftobj = None
             #end if
         #end if
