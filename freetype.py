@@ -523,6 +523,22 @@ class FT :
     ORIENTATION_FILL_LEFT = ORIENTATION_POSTSCRIPT
     ORIENTATION_NONE = 2
 
+    Stroker_LineJoin = ct.c_uint
+    STROKER_LINEJOIN_ROUND = 0
+    STROKER_LINEJOIN_BEVEL = 1
+    STROKER_LINEJOIN_MITER_VARIABLE = 2
+    STROKER_LINEJOIN_MITER = STROKER_LINEJOIN_MITER_VARIABLE
+    STROKER_LINEJOIN_MITER_FIXED = 3
+
+    Stroker_LineCap = ct.c_uint
+    STROKER_LINECAP_BUTT = 0
+    STROKER_LINECAP_ROUND = 1
+    STROKER_LINECAP_SQUARE = 2
+
+    StrokerBorder = ct.c_uint
+    STROKER_BORDER_LEFT = 0
+    STROKER_BORDER_RIGHT = 1
+
 #end FT
 
 # not sure that any of these are really necessary...
@@ -1385,19 +1401,18 @@ class Outline :
     #end __del__
 
     # wrappers for outline-processing functions
-    # <http://www.freetype.org/freetype2/docs/reference/ft2-outline_processing.html>?
+    # <http://www.freetype.org/freetype2/docs/reference/ft2-outline_processing.html>
 
     @staticmethod
-    def new(lib, nr_points, nr_contours) :
-        "allocates a new Outline object with enough room for the" \
-        " specified numbers of control points and contours."
+    def new(lib) :
+        "allocates a new Outline object with initially no control points or contours."
         if not isinstance(lib, Library) :
             raise TypeError("expecting a Library")
         #end if
-        result = FT.Outline()
-        check(ft.FT_Outline_New(lib.lib, nr_points, nr_contours, ct.byref(result)))
+        result = ct.pointer(FT.Outline())
+        check(ft.FT_Outline_New(lib.lib, 0, 0, result))
         return \
-            Outline(ct.pointer(result), None, lib)
+            Outline(result, None, lib)
     #end new
 
     def copy(self, other) :
@@ -1556,12 +1571,88 @@ class Outline :
         check(ft.FT_Outline_Decompose(self.ftobj, ct.byref(funcs), ct.c_void_p(0)))
     #end draw
 
+    def _append(self, that) :
+        # appends the contours from FT.Outline that onto this one, extending the arrays appropriately.
+        this_nr_contours = self.ftobj.contents.n_contours
+        this_nr_points = self.ftobj.contents.n_points
+        that_nr_contours = that.contents.n_contours
+        that_nr_points = that.contents.n_points
+        result = ct.pointer(FT.Outline())
+        check(ft.FT_Outline_New
+          (
+            self._lib().lib,
+            this_nr_points + that_nr_points,
+            this_nr_contours + that_nr_contours,
+            result
+          ))
+        libc.memcpy \
+          (
+            result.contents.points,
+            self.ftobj.contents.points,
+            this_nr_points * ct.sizeof(FT.Vector)
+          )
+        libc.memcpy \
+          (
+            ct.cast(result.contents.points, ct.c_void_p).value + this_nr_points * ct.sizeof(FT.Vector),
+            that.contents.points,
+            that_nr_points * ct.sizeof(FT.Vector)
+          )
+        libc.memcpy \
+          (
+            result.contents.tags,
+            self.ftobj.contents.tags,
+            this_nr_points * ct.sizeof(ct.c_ubyte)
+          )
+        libc.memcpy \
+          (
+            ct.cast(result.contents.tags, ct.c_void_p).value + this_nr_points * ct.sizeof(ct.c_ubyte),
+            that.contents.tags,
+            that_nr_points * ct.sizeof(ct.c_ubyte)
+          )
+        libc.memcpy \
+          (
+            result.contents.contours,
+            self.ftobj.contents.contours,
+            this_nr_contours * ct.sizeof(ct.c_short)
+          )
+        libc.memcpy \
+          (
+            ct.cast(result.contents.contours, ct.c_void_p).value + this_nr_contours * ct.sizeof(ct.c_short),
+            that.contents.contours,
+            that_nr_contours * ct.sizeof(ct.c_short)
+          )
+        result.contents.flags = self.ftobj.contents.flags # good enough?
+        self.ftobj = result
+    #end _append
+
+    def append(self, other) :
+        "appends the contours from Outline other onto this one, extending the arrays appropriately."
+        if not isinstance(other, Outline) :
+            raise TypeError("expecting another Outline")
+        #end if
+        self._append(other.ftobj)
+    #end append
+
+    def get_inside_border(self) :
+        "returns the inside border for the Outline."
+        return \
+            ft.FT_Outline_GetInsideBorder(self.ftobj)
+    #end get_inside_border
+
+    def get_outside_border(self) :
+        "returns the outside border for the Outline."
+        return \
+            ft.FT_Outline_GetOutsideBorder(self.ftobj)
+    #end get_outside_border
+
 #end Outline
 def_extra_fields \
   (
     clas = Outline,
     simple_fields =
         (
+            ("n_contours", "number of contours in glyph", None),
+            ("n_points", "number of control points in glyph", None),
             ("flags",
                 "bits that characterize the outline and give hints to the"
                 " scan-converter and hinter. See FT.OUTLINE_XXX",
@@ -1845,5 +1936,136 @@ def_extra_fields \
         ),
     struct_fields = ()
   )
+
+class Stroker :
+    "representation of a FreeType Stroker. Instantiate this with a Library instance."
+
+    def __init__(self, lib) :
+        if not isinstance(lib, Library) :
+            raise TypeError("expecting a Library")
+        #end if
+        self._lib = weakref.ref(lib)
+        result = ct.pointer(ct.c_void_p())
+        check(ft.FT_Stroker_New(lib.lib, result))
+        self.ftobj = result.contents
+    #end __init__
+
+    def __del__(self) :
+        if self.ftobj != None and self._lib != None and self._lib() != None :
+            ft.FT_Stroker_Done(self.ftobj)
+            self.ftobj = None
+        #end if
+    #end __del__
+
+    def stroke(self, glyph, replace) :
+        if not isinstance(glyph, Glyph) :
+            raise TypeError("expecting a Glyph")
+        #end if
+        result = ct.pointer(glyph.ftobj)
+        check(ft.FT_Glyph_Stroke(result, self.ftobj, int(replace)))
+        if replace :
+            glyph.ftobj = result.contents
+            result = None
+        else :
+            result = Glyph(result.contents)
+        #end if
+        return \
+            result
+    #end stroke
+
+    def stroke_border(self, glyph, inside, replace) :
+        if not isinstance(glyph, Glyph) :
+            raise TypeError("expecting a Glyph")
+        #end if
+        result = ct.pointer(glyph.ftobj)
+        check(ft.FT_Glyph_StrokeBorder(result, self.ftobj, int(inside), int(replace)))
+        if replace :
+            glyph.ftobj = result.contents
+            result = None
+        else :
+            result = Glyph(result.contents)
+        #end if
+        return \
+            result
+    #end stroke_border
+
+    def set(self, radius, line_cap, line_join, miter_limit) :
+        ft.FT_Stroker_Set(self.ftobj, to_f16_16(radius), line_cap, line_join, to_f16_16(miter_limit))
+    #end set
+
+    def rewind(self) :
+        ft.FT_Stroker_Rewind(self.ftobj)
+    #end rewind
+
+    def parse_outline(self, outline, opened) :
+        if not isinstance(outline, Outline) :
+            raise TypeError("expecting an Outline")
+        #end if
+        check(ft.FT_Stroker_ParseOutline(self.ftobj, outline.ftobj, int(opened)))
+    #end parse_outline
+
+    # TODO: FT_Stroker_BeginSubPath, FT_Stroker_EndSubPath,
+    # FT_Stroker_LineTo, FT_Stroker_ConicTo, FT_Stroker_CubicTo
+
+    def get_border_counts(self, border) :
+        "returns a pair of integers (anum_points, anum_contours)."
+        anum_points = ct.c_int()
+        anum_contours = ct.c_int()
+        check(ft.FT_Stroker_GetBorderCounts
+          (
+            self.ftobj,
+            border,
+            ct.byref(anum_points),
+            ct.byref(anum_contours)
+          ))
+        return \
+            (anum_points.value, anum_contours.value)
+    #end get_border_counts
+
+    def export_border(self, border, outline) :
+        "appends the border contours onto the Outline object, extending its storage as necessary."
+        assert self._lib() != None, "parent Library has gone"
+        if not isinstance(outline, Outline) :
+            raise TypeError("expecting an Outline")
+        #end if
+        nr_points, nr_contours = self.get_border_counts(border)
+        temp = ct.pointer(FT.Outline())
+        check(ft.FT_Outline_New(self._lib().lib, nr_points, nr_contours, temp))
+        temp.contents.n_points = 0
+        temp.contents.n_contours = 0
+        ft.FT_Stroker_ExportBorder(self.ftobj, border, temp)
+        outline._append(temp)
+    #end export_border
+
+    def get_counts(self) :
+        "returns a pair of integers (anum_points, anum_contours)."
+        anum_points = ct.c_int()
+        anum_contours = ct.c_int()
+        check(ft.FT_Stroker_GetCounts
+          (
+            self.ftobj,
+            ct.byref(anum_points),
+            ct.byref(anum_contours)
+          ))
+        return \
+            (anum_points.value, anum_contours.value)
+    #end get_counts
+
+    def export(self, outline) :
+        "appends the contours onto the Outline object, extending its storage as necessary."
+        assert self._lib() != None, "parent Library has gone"
+        if not isinstance(outline, Outline) :
+            raise TypeError("expecting an Outline")
+        #end if
+        nr_points, nr_contours = self.get_counts()
+        temp = ct.pointer(FT.Outline())
+        check(ft.FT_Outline_New(self._lib().lib, nr_points, nr_contours, temp))
+        temp.contents.n_points = 0
+        temp.contents.n_contours = 0
+        ft.FT_Stroker_Export(self.ftobj, temp)
+        outline._append(temp)
+    #end export
+
+#end Stroker
 
 del def_extra_fields # my job is done
