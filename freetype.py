@@ -59,6 +59,12 @@ class FT :
     "useful definitions adapted from freetype.h. See the more Pythonic wrappers" \
     " defined further down in preference to accessing low-level structures directly."
 
+    # General ctypes gotcha: when passing addresses of ctypes-constructed objects
+    # to routine calls, do not construct the objects directly in the call. Otherwise
+    # the refcount goes to 0 before the routine is actually entered, and the object
+    # can get prematurely disposed. Always store the object reference into a local
+    # variable, and pass the value of the variable instead.
+
     Error = ct.c_int # hopefully this is always correct
 
     class LibraryRec(ct.Structure) :
@@ -1131,9 +1137,6 @@ class Face :
 
     def set_transform(self, matrix, delta) :
         "matrix and delta should be the Pythonic Matrix and Vector, not the FT types."
-        # Note I explicitly put converted objects into local variables rather
-        # than passing them straight to FT call, to ensure they don’t disappear
-        # too soon
         ftmat = matrix.to_ft()
         ftdelta = delta.to_ft_f26_6() # this is a guess
         ft.FT_Set_Transform(self.ftobj, ct.byref(ftmat), ct.byref(ftdelta))
@@ -1357,7 +1360,8 @@ CURVEPT_OFF2 = 0 # off-curve (quadratic Bézier segment)
 CURVEPT_OFF3 = 2 # off-curve (cubic Bézier segment)
 
 class Outline :
-    "Pythonic representation of an FT.Outline. Get one of these from GlyphSlot.outline."
+    "Pythonic representation of an FT.Outline. Get one of these from" \
+    " GlyphSlot.outline or Outline.new()."
 
     def __init__(self, ftobj, owner, lib) :
         self.ftobj = ftobj
@@ -1387,6 +1391,9 @@ class Outline :
     def new(lib, nr_points, nr_contours) :
         "allocates a new Outline object with enough room for the" \
         " specified numbers of control points and contours."
+        if not isinstance(lib, Library) :
+            raise TypeError("expecting a Library")
+        #end if
         result = FT.Outline()
         check(ft.FT_Outline_New(lib.lib, nr_points, nr_contours, ct.byref(result)))
         return \
