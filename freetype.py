@@ -1207,7 +1207,7 @@ class Face :
         result = FT.Vector()
         check(ft.FT_Get_Kerning(self.ftobj, left_glyph, right_glyph, kern_mode, ct.byref(result)))
         if self.ftobj.contents.face_flags & FT.FACE_FLAG_SCALABLE != 0 and kern_mode != FT.KERNING_UNSCALED :
-            result = Vector.from_ft_f16_16(result)
+            result = Vector.from_ft_f26_6(result)
         else :
             result = Vector.from_ft_int(result)
         #end if
@@ -1219,7 +1219,7 @@ class Face :
         result = FT.Fixed(0)
         check(ft.FT_Get_Track_Kerning(self.ftobj, to_f16_16(point_size), degree, ct.byref(result)))
         return \
-            from_f16_16(result.value)
+            from_f26_6(result.value)
     #end get_track_kerning
 
     def get_advance(self, gindex, load_flags) :
