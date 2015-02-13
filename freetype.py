@@ -711,6 +711,42 @@ def def_extra_fields(clas, simple_fields, struct_fields) :
 # Higher-level wrapper classes for FreeType objects
 #-
 
+def ft_convs(clas, ft_type, fields) :
+    # defines conversions to/from components of different fixed-point formats.
+
+    def def_ft_conv(name, shift) :
+        if shift != 0 :
+            factor = 1 << shift
+            coord_to = lambda x : round(x * factor)
+            coord_from = lambda i : i / factor
+        else :
+            coord_to = lambda x : round(x)
+            coord_from = lambda i : float(i)
+        #end if
+        conv_to = lambda self : ft_type(*tuple(coord_to(getattr(self, k)) for k in fields))
+        conv_to.__name__ = "to_ft_%s" % name
+        conv_to.__doc__ = "returns an FT.%s value representing the contents of this %s with coordinates interpreted as %s" % (ft_type.__name__, clas.__name__, name)
+        conv_from = lambda ftobj : clas(*tuple(coord_from(getattr(ftobj, k)) for k in fields))
+        conv_from.__name__ = "from_ft_%s" % name
+        conv_from.__doc__ = "creates a new %s from an FT.%s with coordinates interpreted as %s" % (clas.__name__, ft_type.__name__, name)
+        setattr(clas, conv_to.__name__, conv_to)
+        setattr(clas, conv_from.__name__, staticmethod(conv_from))
+    #end def_ft_conv
+
+#begin ft_convs
+    for \
+        name, shift \
+    in \
+        (
+            ("int", 0),
+            ("f16_16", 16),
+            ("f26_6", 6),
+        ) \
+    :
+        def_ft_conv(name, shift)
+    #end for
+#end ft_convs
+
 class Vector :
     "Pythonic representation of an FT.Vector, with conversions to/from FreeType form."
 
@@ -769,43 +805,7 @@ class Vector :
     #end __truediv__
 
 #end Vector
-def _vector_convs() :
-    # defines conversions to/from components of different fixed-point formats
-
-    def def_vector_conv(name, shift) :
-        if shift != 0 :
-            factor = 1 << shift
-            coord_to = lambda x : round(x * factor)
-            coord_from = lambda i : i / factor
-        else :
-            coord_to = lambda x : round(x)
-            coord_from = lambda i : float(i)
-        #end if
-        conv_to = lambda self : FT.Vector(coord_to(self.x), coord_to(self.y))
-        conv_to.__name__ = "to_ft_%s" % name
-        conv_to.__doc__ = "returns an FT.Vector value representing the contents of this Vector with coordinates interpreted as %s" % name
-        conv_from = lambda vec : Vector(coord_from(vec.x), coord_from(vec.y))
-        conv_from.__name__ = "from_ft_%s" % name
-        conv_from.__doc__ = "creates a new Vector from an FT.Vector with coordinates interpreted as %s" % name
-        setattr(Vector, conv_to.__name__, conv_to)
-        setattr(Vector, conv_from.__name__, staticmethod(conv_from))
-    #end def_vector_conv
-
-#begin _vector_convs
-    for \
-        name, shift \
-    in \
-        (
-            ("int", 0),
-            ("f16_16", 16),
-            ("f26_6", 6),
-        ) \
-    :
-        def_vector_conv(name, shift)
-    #end for
-#end _vector_convs
-_vector_convs()
-del _vector_convs
+ft_convs(Vector, FT.Vector, ("x", "y"))
 
 class Matrix :
     "Pythonic representation of an FT.Matrix, with conversions to/from FreeType form."
@@ -953,6 +953,27 @@ class Matrix :
     #end skewing
 
 #end Matrix
+
+class BBox :
+    "high-level wrapper around an FT.BBox. Coordinates are always stored as floats, but can" \
+    " be converted to/from appropriate FreeType scaled fixed-point types."
+
+    def __init__(self, xMin, yMin, xMax, yMax) :
+        self.xMin = xMin
+        self.yMin = yMin
+        self.xMax = xMax
+        self.yMax = yMax
+    #end __init__
+
+    def __repr__(self) :
+        return \
+            "BBox(%.3f, %.3f, %.3f, %.3f)" % (self.xMin, self.yMin, self.xMax, self.yMax)
+    #end __repr__
+
+#end BBox
+ft_convs(BBox, FT.BBox, ("xMin", "yMin", "xMax", "yMax"))
+
+del ft_convs # my work is done
 
 class Library :
     "Instantiate this to open the FreeType library. Use the new_face or find_face" \
@@ -1244,6 +1265,7 @@ def_extra_fields \
     clas = Face,
     simple_fields =
         (
+            ("bbox", "bounding box in font units, big enough to contain any glyph (scalable fonts only)", BBox.from_ft_int),
             ("units_per_EM", "integer font units per em square (scalable fonts only)", None),
             ("ascender", "typographic ascender in font units (scalable fonts only)", None),
             ("descender", "typographic descender in font units, typically negative (scalable fonts only)", None),
@@ -1255,7 +1277,6 @@ def_extra_fields \
         ),
     struct_fields =
         (
-            ("bbox", FT.BBox, False, "bounding box in font units, big enough to contain any glyph (scalable fonts only)", None),
             (
                 "size", FT.SizeRec, True, "current active size",
                 {
@@ -1460,7 +1481,7 @@ class Outline :
         result = FT.BBox()
         ft.FT_Outline_Get_CBox(self.ftobj, ct.byref(result))
         return \
-            struct_to_dict(result, FT.BBox, False, {None : int})
+            BBox.from_ft_int(result)
     #end get_cbox
 
     def get_bbox(self) :
@@ -1468,7 +1489,7 @@ class Outline :
         result = FT.BBox()
         check(ft.FT_Outline_Get_BBox(self.ftobj, ct.byref(result)))
         return \
-            struct_to_dict(result, FT.BBox, False, {None : int})
+            BBox.from_ft_int(result)
     #end get_bbox
 
     def get_bitmap(self, lib, the_bitmap) :
@@ -1689,9 +1710,9 @@ class Glyph :
     def get_cbox(self, bbox_mode) :
         "returns a glyph’s control box, which contains all the curve control points."
         result = FT.BBox()
-        check(ft.FT_Glyph_Get_CBox(self.ftobj, bbox_mode, ct.byref(result)))
+        ft.FT_Glyph_Get_CBox(self.ftobj, bbox_mode, ct.byref(result))
         return \
-            struct_to_dict(result, FT.BBox, False, {None : (from_f26_6, int)[bbox_mode >= FT.GLYPH_BBOX_TRUNCATE]})
+            (BBox.from_ft_f26_6, BBox.from_ft_int)[bbox_mode >= FT.GLYPH_BBOX_TRUNCATE](result)
     #end get_cbox
 
     def to_bitmap(self, render_mode, origin, replace) :
