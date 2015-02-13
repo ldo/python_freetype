@@ -588,7 +588,9 @@ if fc != None :
 
         def collect(self, pattern) :
             "collects another FcPattern reference to be disposed."
-            if pattern != 0 :
+            # c_void_p function results are peculiar: they return integers
+            # for non-null values, but None for null.
+            if pattern != None :
                 self.to_dispose.append(pattern)
             #end if
             return \
@@ -998,7 +1000,7 @@ class Library :
         #end if
         with _FcPatternManager() as patterns :
             search_pattern = patterns.collect(fc.FcNameParse(pattern.encode("utf-8")))
-            if search_pattern == 0 :
+            if search_pattern == None :
                 raise RuntimeError("cannot parse font name pattern")
             #end if
             if not fc.FcConfigSubstitute(None, search_pattern, _FC.FcMatchPattern) :
@@ -1007,7 +1009,7 @@ class Library :
             fc.FcDefaultSubstitute(search_pattern)
             match_result = ct.c_int()
             found_pattern = patterns.collect(fc.FcFontMatch(None, search_pattern, ct.byref(match_result)))
-            if found_pattern == 0 or match_result.value != _FC.FcResultMatch :
+            if found_pattern == None or match_result.value != _FC.FcResultMatch :
                 raise RuntimeError("cannot match font name")
             #end if
             name_ptr = ct.c_char_p()
