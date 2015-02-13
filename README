@@ -3,10 +3,14 @@ python_freetype is a high-level Python 3 binding for the
 implemented entirely in Python, using ctypes. FreeType objects are
 wrapped in Python objects, with public structure fields accessible as
 read-only attributes of those objects, and object-specific routine
-calls done via methods of those objects. In usual Python fashion, you
-never have to explicitly dispose of anything: the lifetimes of the
-FreeType objects are automatically managed in sync with the lifetimes
-of their Python wrappers.
+calls done via methods of those objects.
+
+In usual Python fashion, you never have to explicitly dispose of
+anything: the lifetimes of the FreeType objects are automatically
+managed in sync with the lifetimes of their Python wrappers. You don’t
+have to check for errors; all calls that return FT_Error are
+automatically checked, and an instance of FTException will be raised
+when appropriate.
 
 Method names drop “FT_” prefixes and object-type-specific parts of
 names: thus, the FreeType call “FT_Outline_Transform” is wrapped by a
