@@ -1001,6 +1001,57 @@ class Vector :
             result
     #end __truediv__
 
+    @staticmethod
+    def unit(angle, degrees) :
+        "returns the unit vector with the specified direction." \
+        " degrees is True if angle is in degrees, False if in radians."
+        if degrees :
+            angle = math.radians(angle)
+        #end if
+        return \
+            Vector(math.cos(angle), math.sin(angle))
+    #end unit
+
+    def rotate(self, angle, degrees) :
+        "returns the Vector rotated by the specified angle." \
+        " degrees is True if angle is in degrees, False if in radians."
+        if degrees :
+            angle = math.radians(angle)
+        #end if
+        cos = math.cos(angle)
+        sin = math.sin(angle)
+        return \
+            Vector(self.x * cos - self.y * sin, self.x * sin + self.y * cos)
+    #end rotate
+
+    def __abs__(self) :
+        "use abs() to get the length of a Vector."
+        return \
+            math.hypot(self.x, self.y)
+    #end __abs__
+
+    def angle(self, degrees) :
+        "returns the Vector’s rotation angle. degrees is True if the angle is" \
+        " to be returned in degrees, False if in radians."
+        result = math.atan2(self.y, self.x)
+        if degrees :
+            result = math.degrees(result)
+        #end if
+        return \
+            result
+    #end angle
+
+    @staticmethod
+    def from_polar(length, angle, degrees) :
+        "constructs a Vector from a length and a direction." \
+        " degrees is True if angle is in degrees, False if in radians."
+        if degrees :
+            angle = math.radians(angle)
+        #end if
+        return \
+            Vector(length * math.cos(angle), length * math.sin(angle))
+    #end from_polar
+
 #end Vector
 ft_convs(Vector, FT.Vector, ("x", "y"))
 
