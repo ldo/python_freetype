@@ -852,27 +852,21 @@ def def_extra_fields(clas, simple_fields, struct_fields) :
     # “ftobj” points to the FT object to be decoded.
 
     def def_simple_attr(field, doc, convert) :
-
-        def simple_attr(self) :
-            return \
-                getattr(self.ftobj.contents, field)
-        #end simple_attr
-
-        def conv_attr(self) :
-            return \
-                convert(getattr(self.ftobj.contents, field))
-        #end conv_attr
-
-    #begin def_simple_attr
         if convert != None :
-            prop = conv_attr
+            def attr(self) :
+                return \
+                    convert(getattr(self.ftobj.contents, field))
+            #end attr
         else :
-            prop = simple_attr
+            def attr(self) :
+                return \
+                    getattr(self.ftobj.contents, field)
+            #end attr
         #end if
         if doc != None :
-            prop.__doc__ = doc
+            attr.__doc__ = doc
         #end if
-        setattr(clas, field, property(prop))
+        setattr(clas, field, property(attr))
     #end def_simple_attr
 
     def def_struct_attr(field, fieldtype, indirect, doc, extra_decode) :
