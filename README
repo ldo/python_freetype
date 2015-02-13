@@ -41,9 +41,17 @@ To install python_freetype on your system, type
 Basic Usage
 ===========
 
-To initialize FreeType, create an instance of the Library object:
+To initialize FreeType, import the module and create an instance of the
+Library object:
 
+    import freetype
     lib = freetype.Library()
+
+You can ask this instance for the version of FreeType on your system:
+
+    print(lib.version)
+
+which might print something like “(2, 5, 2)”.
 
 To load a Face from a specific font file, use the library’s new_face
 method, e.g.:
@@ -105,9 +113,9 @@ to make the glyph render the right way up:
     g = cairo.Context(...)
     ... further initialization of g ...
     m = cairo.Matrix()
-    m.translate(0, + (bbox["yMax"] - bbox["yMin"]) / 2)
+    m.translate(0, + (bbox.yMax - bbox.yMin) / 2)
     m.scale(1, -1)
-    m.translate(0, - (bbox["yMax"] - bbox["yMin"]) / 2)
+    m.translate(0, - (bbox.yMax - bbox.yMin) / 2)
     g.transform(m)
 
 Draw the outline as a Cairo path into the context:
