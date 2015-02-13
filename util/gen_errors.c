@@ -35,4 +35,6 @@ int main(void)
 #undef FT_ERRORDEF_
     fprintf(stdout, "        }\n");
     fprintf(stdout, "\n#end Error\n");
+    return
+        0;
   } /*main*/
