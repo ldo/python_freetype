@@ -31,6 +31,13 @@ WARNING: This Python binding is still to be considered in a state of
 flux for now, subject to whatever reorganization looks to be necessary
 as experience is gained with using it.
 
+Installation
+============
+
+To install python_freetype on your system, type
+
+    python3 setup.py install
+
 Basic Usage
 ===========
 
