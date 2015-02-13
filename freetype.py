@@ -56,8 +56,9 @@ def struct_to_dict(item, itemtype, indirect, extra_decode = None) :
 #end struct_to_dict
 
 class FT :
-    "useful definitions adapted from freetype.h. See the more Pythonic wrappers" \
-    " defined further down in preference to accessing low-level structures directly."
+    "useful definitions adapted from freetype.h. You will need to use the constants," \
+    " but apart from that, see the more Pythonic wrappers defined outside this" \
+    " class in preference to accessing low-level structures directly."
 
     # General ctypes gotcha: when passing addresses of ctypes-constructed objects
     # to routine calls, do not construct the objects directly in the call. Otherwise
