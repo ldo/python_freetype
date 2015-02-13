@@ -13,7 +13,7 @@ distutils.core.setup \
   (
     name = "Python FreeType",
     version = "0.4",
-    description = "anguage bindings for the FreeType library, for Python 3.2 or later",
+    description = "language bindings for the FreeType library, for Python 3.2 or later",
     author = "Lawrence D'Oliveiro",
     author_email = "ldo@geek-central.gen.nz",
     url = "http://github.com/ldo/python_freetype",
