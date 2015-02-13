@@ -566,16 +566,16 @@ if fc != None :
     fc.FcPatternDestroy.argtypes = (ct.c_void_p,)
     fc.FcPatternDestroy.restype = None
 
-    class FC :
-        "minimal Fontconfig interface, just sufficient for my needs."
+    class _FC :
+        # minimal Fontconfig interface, just sufficient for my needs.
 
         FcMatchPattern = 0
         FcResultMatch = 0
 
-    #end FC
+    #end _FC
 
-    class FcPatternManager :
-        "context manager which collects a list of FcPattern objects requiring disposal."
+    class _FcPatternManager :
+        # context manager which collects a list of FcPattern objects requiring disposal.
 
         def __init__(self) :
             self.to_dispose = []
@@ -601,7 +601,7 @@ if fc != None :
             #end for
         #end __exit__
 
-    #end FcPatternManager
+    #end _FcPatternManager
 
 #end if
 
@@ -996,22 +996,22 @@ class Library :
         if not fc.FcInit() :
             raise RuntimeError("failed to initialize Fontconfig.")
         #end if
-        with FcPatternManager() as patterns :
+        with _FcPatternManager() as patterns :
             search_pattern = patterns.collect(fc.FcNameParse(pattern.encode("utf-8")))
             if search_pattern == 0 :
                 raise RuntimeError("cannot parse font name pattern")
             #end if
-            if not fc.FcConfigSubstitute(None, search_pattern, FC.FcMatchPattern) :
+            if not fc.FcConfigSubstitute(None, search_pattern, _FC.FcMatchPattern) :
                 raise RuntimeError("cannot substitute font configuration")
             #end if
             fc.FcDefaultSubstitute(search_pattern)
             match_result = ct.c_int()
             found_pattern = patterns.collect(fc.FcFontMatch(None, search_pattern, ct.byref(match_result)))
-            if found_pattern == 0 or match_result.value != FC.FcResultMatch :
+            if found_pattern == 0 or match_result.value != _FC.FcResultMatch :
                 raise RuntimeError("cannot match font name")
             #end if
             name_ptr = ct.c_char_p()
-            if fc.FcPatternGetString(found_pattern, b"file", 0, ct.byref(name_ptr)) != FC.FcResultMatch :
+            if fc.FcPatternGetString(found_pattern, b"file", 0, ct.byref(name_ptr)) != _FC.FcResultMatch :
                 raise RuntimeError("cannot get font file name")
             #end if
             found_filename = name_ptr.value.decode("utf-8")
