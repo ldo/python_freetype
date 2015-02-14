@@ -1791,7 +1791,7 @@ class Outline :
         result = FT.BBox()
         ft.FT_Outline_Get_CBox(self.ftobj, ct.byref(result))
         return \
-            BBox.from_ft_int(result)
+            BBox.from_ft_f26_6(result)
     #end get_cbox
 
     def get_bbox(self) :
@@ -1799,7 +1799,7 @@ class Outline :
         result = FT.BBox()
         check(ft.FT_Outline_Get_BBox(self.ftobj, ct.byref(result)))
         return \
-            BBox.from_ft_int(result)
+            BBox.from_ft_f26_6(result)
     #end get_bbox
 
     def get_bitmap(self, lib, the_bitmap) :
