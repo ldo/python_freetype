@@ -1899,25 +1899,26 @@ class Outline :
         " is expected to be a cairo.Context."
 
         pos0 = None
+        from_ft = Vector.from_ft_f26_6
 
         def move_to(pos, _) :
             nonlocal pos0
-            pos = Vector.from_ft_int(pos.contents)
+            pos = from_ft(pos.contents)
             pos0 = pos
             g.move_to(pos.x, pos.y)
         #end move_to
 
         def line_to(pos, _) :
             nonlocal pos0
-            pos = Vector.from_ft_int(pos.contents)
+            pos = from_ft(pos.contents)
             pos0 = pos
             g.line_to(pos.x, pos.y)
         #end line_to
 
         def conic_to(qpos1, qpos2, _) :
             nonlocal pos0
-            midpos = Vector.from_ft_int(qpos1.contents)
-            pos3 = Vector.from_ft_int(qpos2.contents)
+            midpos = from_ft(qpos1.contents)
+            pos3 = from_ft(qpos2.contents)
             # quadratic-to-cubic conversion taken from
             # <http://stackoverflow.com/questions/3162645/convert-a-quadratic-bezier-to-a-cubic>
             pos1 = pos0 + 2 * (midpos - pos0) / 3
@@ -1928,9 +1929,9 @@ class Outline :
 
         def cubic_to(pos1, pos2, pos3, _) :
             nonlocal pos0
-            pos1 = Vector.from_ft_int(pos1.contents)
-            pos2 = Vector.from_ft_int(pos2.contents)
-            pos3 = Vector.from_ft_int(pos3.contents)
+            pos1 = from_ft(pos1.contents)
+            pos2 = from_ft(pos2.contents)
+            pos3 = from_ft(pos3.contents)
             g.curve_to(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y)
             pos0 = pos3
         #end cubic_to
