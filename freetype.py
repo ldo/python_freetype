@@ -1803,9 +1803,12 @@ class Outline :
     #end get_bbox
 
     def get_bitmap(self, lib, the_bitmap) :
-        "renders the Outline into the pre-existing Bitmap. FIXME: doesn’t seem to do anything."
+        "renders the Outline into the pre-existing Bitmap."
+        if not isinstance(lib, Library) :
+            raise TypeError("expecting lib to be a Library")
+        #end if
         if not isinstance(the_bitmap, Bitmap) :
-            raise TypeError("expecting a Bitmap")
+            raise TypeError("expecting the_bitmap to be a Bitmap")
         #end if
         check(ft.FT_Outline_Get_Bitmap(lib.lib, self.ftobj, the_bitmap.ftobj))
     #end get_bitmap
