@@ -76,7 +76,7 @@ font family name and style name, by looking at attributes of the Face:
 
 Set the character size for rendering:
 
-    face.set_char_size(height = 72, horz_resolution = 90)
+    face.set_char_size(size = 72, resolution = 90)
 
 Load the glyph for a character code:
 

@@ -1451,23 +1451,28 @@ class Face :
             ft.FT_Get_Charmap_Index(charmap["."])
     #end get_charmap_index
 
-    def set_char_size(self, width = None, height = None, horz_resolution = None, vert_resolution = None) :
+    def set_char_size(self, size = None, width = None, height = None, resolution = None, horz_resolution = None, vert_resolution = None) :
+        "sets the character size and resolution in various ways: you can specify width and height" \
+        " separately, or size for both; similarly you can specify horz_resolution and" \
+        " vert_resolution separately, or resolution for both."
         assert \
             (
-                (width != None or height != None)
+                (size != None) != (width != None and height != None)
             and
-                (horz_resolution != None or vert_resolution != None)
+                (resolution != None) != (horz_resolution != None and vert_resolution != None)
             ), \
-            "need to specify either width or height and either horizontal or vertical resolution"
+            "need to specify either size or width and height, and either resolution or horz_resolution and vert_resolution"
         if width == None :
-            width = height
-        elif height == None :
-            height = width
+            width = size
+        #end if
+        if height == None :
+            height = size
         #end if
         if horz_resolution == None :
-            horz_resolution = vert_resolution
-        elif vert_resolution == None :
-            vert_resolution = horz_resolution
+            horz_resolution = resolution
+        #end if
+        if vert_resolution == None :
+            vert_resolution = resolution
         #end if
         check(ft.FT_Set_Char_Size
           (
