@@ -1,5 +1,23 @@
 #+
 # A Python 3 wrapper for FreeType <http://www.freetype.org/> using ctypes.
+# This is not a complete wrapper for all FreeType functionality, but it
+# should be comprehensive enough to be useful. Functionality that is (mostly)
+# covered (as per topics at <http://www.freetype.org/freetype2/docs/reference/ft2-toc.html>):
+#
+#     * base interface
+#     * glyph management
+#     * computations
+#     * outline processing
+#     * quick retrieval of advance values
+#     * bitmap handling
+#     * scanline converter
+#     * glyph stroker
+#
+# in addition to which, a convenience function is supplied to use Fontconfig
+# to find matching fonts, and functions are available to interface to Pycairo:
+#
+#     * convert a Bitmap to an ImageSurface
+#     * draw the contours of an Outline as a Path
 #
 # Copyright 2015 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 # Dual-licensed under the FreeType licence
