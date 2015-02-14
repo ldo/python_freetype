@@ -283,6 +283,7 @@ class FT :
                 ("palette", ct.c_void_p),
             ]
     #end Bitmap
+    BitmapPtr = ct.POINTER(Bitmap)
 
     class GlyphSlotRec(ct.Structure) :
         Slot_Internal = ct.c_void_p
@@ -539,6 +540,68 @@ class FT :
     StrokerBorder = ct.c_uint
     STROKER_BORDER_LEFT = 0
     STROKER_BORDER_RIGHT = 1
+
+    class RasterRec(ct.Structure) :
+        pass # private
+    #end RasterRec
+    Raster = ct.POINTER(RasterRec)
+
+    class Span(ct.Structure) :
+        _fields_ = \
+            [
+                ("x", ct.c_short),
+                ("len", ct.c_ushort),
+                ("coverage", ct.c_ubyte),
+            ]
+    #end Span
+    SpanPtr = ct.POINTER(Span)
+
+    SpanFunc = ct.CFUNCTYPE(None, ct.c_int, ct.c_int, SpanPtr, ct.c_void_p)
+
+    Raster_BitTest_Func = ct.CFUNCTYPE(ct.c_int, ct.c_int, ct.c_int, ct.c_void_p)
+    Raster_BitSet_Func = ct.CFUNCTYPE(None, ct.c_int, ct.c_int, ct.c_void_p)
+
+    class Raster_Params(ct.Structure) :
+        pass
+    #end Raster_Params
+    Raster_Params._fields_ = \
+        [
+            ("target", BitmapPtr),
+            ("source", ct.c_void_p),
+            ("flags", ct.c_int),
+            ("gray_spans", SpanFunc),
+            ("black_spans", SpanFunc), # unused
+            ("bit_test", Raster_BitTest_Func), # unused
+            ("bit_set", Raster_BitSet_Func), # unused
+            ("user", ct.c_void_p),
+            ("clip_box", BBox),
+        ]
+    Raster_ParamsPtr = ct.POINTER(Raster_Params)
+
+    # bit masks for Raster_Params.flags
+    RASTER_FLAG_DEFAULT = 0x0
+    RASTER_FLAG_AA = 0x1
+    RASTER_FLAG_DIRECT = 0x2
+    RASTER_FLAG_CLIP = 0x4
+
+    Raster_NewFunc = ct.CFUNCTYPE(ct.c_int, ct.c_void_p, Raster)
+    Raster_DoneFunc = ct.CFUNCTYPE(None, Raster)
+    Raster_ResetFunc = ct.CFUNCTYPE(None, Raster, ct.POINTER(ct.c_ubyte), ct.c_ulong)
+    Raster_SetModeFunc = ct.CFUNCTYPE(ct.c_int, Raster, ct.c_ulong, ct.c_void_p)
+    Raster_RenderFunc = ct.CFUNCTYPE(ct.c_int, Raster, Raster_ParamsPtr)
+
+    class Raster_Funcs(ct.Structure) :
+        pass
+    #end Raster_Funcs
+    Raster_Funcs._fields_ = \
+        [
+            ("glyph_format", Glyph_Format),
+            ("raster_new", Raster_NewFunc),
+            ("raster_reset", Raster_ResetFunc),
+            ("raster_set_mode", Raster_SetModeFunc),
+            ("raster_render", Raster_RenderFunc),
+            ("raster_done", Raster_DoneFunc),
+        ]
 
 #end FT
 
@@ -1747,7 +1810,48 @@ class Outline :
             ft.FT_Outline_Get_Orientation(self.ftobj)
     #end get_orientation
 
-    # TODO: FT_Outline_Render
+    def render \
+      (
+        self,
+        lib,
+        target = None,
+          # result will be anti-aliased greyscale if FT.RASTER_FLAG_AA is in flags,
+          # else 1-bit monochrome
+        flags = FT.RASTER_FLAG_DEFAULT,
+        gray_spans = None,
+          # ignored unless FT.RASTER_FLAG_DIRECT and FT.RASTER_FLAG_AA are in flags
+        user = None,
+        clip_box = None # ignored unless FT.RASTER_FLAG_CLIP is in flags
+      ) :
+        "renders the Outline to either the target Bitmap or through the gray_spans callback," \
+        " depending on flags."
+        if not isinstance(lib, Library) :
+            raise TypeError("expecting lib to be a Library")
+        #end if
+        if target != None and not isinstance(target, Bitmap) :
+            raise TypeError("expecting target to be a Bitmap")
+        #end if
+        params = FT.Raster_Params()
+        if target != None :
+            params.target = target.ftobj # BitmapPtr
+        else :
+            params.target = None
+        #end if
+        # params.source = self.ftobj # will be done by FreeType anyway
+        params.flags = flags
+        params.gray_spans = FT.SpanFunc(gray_spans)
+        params.black_spans = FT.SpanFunc(0) # unused
+        params.bit_test = FT.Raster_BitTest_Func(0) # unused
+        params.bit_set = FT.Raster_BitSet_Func(0) # unused
+        params.user = None # handled specially
+        if clip_box != None :
+            params.clip_box = clip_box.to_ft_int()
+        else :
+            params.clip_box = FT.BBox()
+        #end if
+        check(ft.FT_Outline_Render(lib.lib, self.ftobj, ct.byref(params)))
+    #end render
+
     # TODO: do I need more direct access to FT_Outline_Decompose?
     # Or is draw method (below) sufficient?
 
