@@ -455,6 +455,14 @@ class FT :
     # extra load flag for FT_Get_Advance and FT_Get_Advances functions
     ADVANCE_FLAG_FAST_ONLY = 0x20000000
 
+    SUBGLYPH_FLAG_ARGS_ARE_WORDS = 1
+    SUBGLYPH_FLAG_ARGS_ARE_XY_VALUES = 2
+    SUBGLYPH_FLAG_ROUND_XY_TO_GRID = 4
+    SUBGLYPH_FLAG_SCALE = 8
+    SUBGLYPH_FLAG_XY_SCALE = 0x40
+    SUBGLYPH_FLAG_2X2 = 0x80
+    SUBGLYPH_FLAG_USE_MY_METRICS = 0x200
+
     # FSType flags
     FSTYPE_INSTALLABLE_EMBEDDING = 0x0000
     FSTYPE_RESTRICTED_LICENSE_EMBEDDING = 0x0002
@@ -1704,6 +1712,50 @@ class GlyphSlot :
             Glyph(result)
     #end get_glyph
 
+    class SubGlyphInfo :
+        "convenient container for info returned from get_subglyph_info." \
+        " index, flags, arg1 and arg2 are integers, while transform is a Matrix."
+
+        def __init__(self, index, flags, arg1, arg2, transform) :
+            self.index = index
+            self.flags = flags
+            self.arg1 = arg1
+            self.arg2 = arg2
+            self.transform = transform
+        #end __init__
+
+    #end SubGlyphInfo
+
+    def get_subglyph_info(self, sub_index) :
+        "returns info about the specified subglyph (sub_index must be in [0 .. num_subglyphs - 1])." \
+        " The info will be returned in a SubGlyphInfo object."
+        p_index = ct.c_int()
+        p_flags = ct.c_uint()
+        p_arg1 = ct.c_int()
+        p_arg2 = ct.c_int()
+        transform = FT.Matrix()
+        # bug: FT_Get_SubGlyph_Info currently always returns error, even on success!
+        # so rather than check its error return, I do my own validation:
+        if self.ftobj.contents.format != FT.GLYPH_FORMAT_COMPOSITE :
+            raise TypeError("only composite glyphs have subglyphs")
+        #end if
+        if sub_index < 0 or sub_index >= self.ftobj.contents.num_subglyphs :
+            raise IndexError("subglyph subindex out of range")
+        #end if
+        ft.FT_Get_SubGlyph_Info \
+          (
+            self.ftobj,
+            sub_index,
+            ct.byref(p_index),
+            ct.byref(p_flags),
+            ct.byref(p_arg1),
+            ct.byref(p_arg2),
+            ct.byref(transform),
+          )
+        return \
+            GlyphSlot.SubGlyphInfo(p_index.value, p_flags.value, p_arg1.value, p_arg2.value, Matrix.from_ft(transform))
+    #end get_subglyph_info
+
 #end GlyphSlot
 def_extra_fields \
   (
@@ -1717,6 +1769,11 @@ def_extra_fields \
                 " or FT.GLYPH_FORMAT_COMPOSITE",
                 from_tag),
             ("advance", "transformed (hinted) advance in (possibly fractional) pixels", Vector.from_ft_f26_6),
+            ("num_subglyphs",
+                "number of subglyphs in a composite glyph. Only if format is"
+                " FT.GLYPH_FORMAT_COMPOSITE, which can only happen if glyph was"
+                " loaded with FT.LOAD_NO_RECURSE, and only with certain fonts",
+                None),
         ),
     struct_fields =
         (
