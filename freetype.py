@@ -1,7 +1,8 @@
-"""A Python 3 wrapper for FreeType <http://www.freetype.org/> using ctypes.
-This is not a complete wrapper for all FreeType functionality, but it
-should be comprehensive enough to be useful. Functionality that is (mostly)
-covered (as per topics at <http://www.freetype.org/freetype2/docs/reference/ft2-toc.html>):
+"""A Python 3 wrapper for FreeType <http://www.freetype.org/> using
+ctypes. This is not a complete wrapper for all FreeType
+functionality, but it should be comprehensive enough to be
+useful. Functionality that is (mostly) covered (as per topics at
+<http://www.freetype.org/freetype2/docs/reference/ft2-toc.html>):
 
     * base interface
     * glyph management
@@ -11,10 +12,13 @@ covered (as per topics at <http://www.freetype.org/freetype2/docs/reference/ft2-
     * bitmap handling
     * scanline converter
     * glyph stroker
-in addition to which, a convenience function is supplied to use Fontconfig
-to find matching fonts, and functions are available to interface to Pycairo:
 
-    * convert a Bitmap to an ImageSurface
+in addition to which, a convenience function is supplied to use
+Fontconfig to find matching fonts, and functions are available to
+interface to Pycairo:
+
+    * convert a Bitmap to an ImageSurface (requires that your Pycairo
+      support ImageSurface.create_for_data)
     * draw the contours of an Outline as a Path
 """
 #+
@@ -1735,7 +1739,8 @@ class GlyphSlot :
         p_arg1 = ct.c_int()
         p_arg2 = ct.c_int()
         transform = FT.Matrix()
-        # bug: FT_Get_SubGlyph_Info currently always returns error, even on success!
+        # bug in some versions of FreeType (e.g. 2.5.2): FT_Get_SubGlyph_Info
+        # currently always returns error, even on success.
         # so rather than check its error return, I do my own validation:
         if self.ftobj.contents.format != FT.GLYPH_FORMAT_COMPOSITE :
             raise TypeError("only composite glyphs have subglyphs")
