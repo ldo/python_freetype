@@ -517,10 +517,10 @@ class FT :
     #end OutlineGlyphRec
     OutlineGlyph = ct.POINTER(OutlineGlyphRec)
 
-    Outline_MoveToFunc = ct.CFUNCTYPE(None, ct.POINTER(Vector), ct.c_void_p)
-    Outline_LineToFunc = ct.CFUNCTYPE(None, ct.POINTER(Vector), ct.c_void_p)
-    Outline_ConicToFunc = ct.CFUNCTYPE(None, ct.POINTER(Vector), ct.POINTER(Vector), ct.c_void_p)
-    Outline_CubicToFunc = ct.CFUNCTYPE(None, ct.POINTER(Vector), ct.POINTER(Vector), ct.POINTER(Vector), ct.c_void_p)
+    Outline_MoveToFunc = ct.CFUNCTYPE(ct.c_int, ct.POINTER(Vector), ct.c_void_p)
+    Outline_LineToFunc = ct.CFUNCTYPE(ct.c_int, ct.POINTER(Vector), ct.c_void_p)
+    Outline_ConicToFunc = ct.CFUNCTYPE(ct.c_int, ct.POINTER(Vector), ct.POINTER(Vector), ct.c_void_p)
+    Outline_CubicToFunc = ct.CFUNCTYPE(ct.c_int, ct.POINTER(Vector), ct.POINTER(Vector), ct.POINTER(Vector), ct.c_void_p)
 
     class Outline_Funcs(ct.Structure) :
         pass
@@ -1911,6 +1911,8 @@ class Outline :
             pos = from_ft(pos.contents)
             pos0 = pos
             g.move_to(pos.x, pos.y)
+            return \
+                0
         #end move_to
 
         def line_to(pos, _) :
@@ -1918,6 +1920,8 @@ class Outline :
             pos = from_ft(pos.contents)
             pos0 = pos
             g.line_to(pos.x, pos.y)
+            return \
+                0
         #end line_to
 
         def conic_to(qpos1, qpos2, _) :
@@ -1930,6 +1934,8 @@ class Outline :
             pos2 = pos3 + 2 * (midpos - pos3) / 3
             g.curve_to(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y)
             pos0 = pos3
+            return \
+                0
         #end conic_to
 
         def cubic_to(pos1, pos2, pos3, _) :
@@ -1939,6 +1945,8 @@ class Outline :
             pos3 = from_ft(pos3.contents)
             g.curve_to(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y)
             pos0 = pos3
+            return \
+                0
         #end cubic_to
 
     #begin draw
