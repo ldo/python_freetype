@@ -455,6 +455,14 @@ class FT :
     # extra load flag for FT_Get_Advance and FT_Get_Advances functions
     ADVANCE_FLAG_FAST_ONLY = 0x20000000
 
+    # FSType flags
+    FSTYPE_INSTALLABLE_EMBEDDING = 0x0000
+    FSTYPE_RESTRICTED_LICENSE_EMBEDDING = 0x0002
+    FSTYPE_PREVIEW_AND_PRINT_EMBEDDING = 0x0004
+    FSTYPE_EDITABLE_EMBEDDING = 0x0008
+    FSTYPE_NO_SUBSETTING = 0x0100
+    FSTYPE_BITMAP_EMBEDDING_ONLY = 0x0200
+
     Render_Mode = ct.c_uint
     # values for Render_Mode
     RENDER_MODE_NORMAL = 0
@@ -829,6 +837,7 @@ ft.FT_Set_Charmap.restype = FT.Error
 ft.FT_Get_First_Char.restype = ct.c_ulong
 ft.FT_Get_Next_Char.restype = ct.c_ulong
 ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
+ft.FT_Get_FSType_Flags.restype = ct.c_ushort
 
 if fc != None :
     fc.FcInit.restype = ct.c_bool
@@ -1573,6 +1582,13 @@ class Face :
         return \
             tuple((from_f16_16, int)[load_flags & FT.LOAD_NO_SCALE != 0](item) for item in result)
     #end get_advances
+
+    @property
+    def fstype_flags(self) :
+        "the FSType flags which specify the licensing restrictions on font embedding/subsetting."
+        return \
+            ft.FT_Get_FSType_Flags(self.ftobj)
+    #end fstype_flags
 
 #end Face
 def_extra_fields \
