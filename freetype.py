@@ -1887,8 +1887,8 @@ class Outline :
                 point = ftobj.points[pointindex]
                 flag = ftobj.tags[pointindex]
                 pt_type = flag & 3
-                contour.append((Vector.from_ft_int(point), pt_type, flag >> 32))
-                  # interpreting coords as ints is a guess
+                contour.append((Vector.from_ft_f26_6(point), pt_type, flag >> 32))
+                  # interpreting coords as f26.6 is a guess
                 if pointindex == endpoint :
                     break
                 pointindex += 1
