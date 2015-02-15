@@ -1714,7 +1714,8 @@ class GlyphSlot :
 
     class SubGlyphInfo :
         "convenient container for info returned from get_subglyph_info." \
-        " index, flags, arg1 and arg2 are integers, while transform is a Matrix."
+        " index, flags, arg1 and arg2 are integers, while transform is a Matrix." \
+        " See FT.SUBGLYPH_FLAG_XXX for flags bits."
 
         def __init__(self, index, flags, arg1, arg2, transform) :
             self.index = index
