@@ -1018,6 +1018,15 @@ def ft_convs(clas, ft_type, fields) :
     #end for
 #end ft_convs
 
+deg = 180 / math.pi
+  # all angles are in radians. You can use the standard Python functions math.degrees
+  # and math.radians to convert back and forth, or multiply and divide by this deg
+  # factor: divide by deg to convert degrees to radians, and multiply by deg to convert
+  # the other way, e.g.
+  #
+  #     math.sin(45 / deg)
+  #     math.atan(1) * deg
+
 class Vector :
     "Pythonic representation of an FT.Vector, with conversions to/from FreeType form."
 
@@ -1076,22 +1085,14 @@ class Vector :
     #end __truediv__
 
     @staticmethod
-    def unit(angle, degrees) :
-        "returns the unit vector with the specified direction." \
-        " degrees is True if angle is in degrees, False if in radians."
-        if degrees :
-            angle = math.radians(angle)
-        #end if
+    def unit(angle) :
+        "returns the unit vector with the specified direction."
         return \
             Vector(math.cos(angle), math.sin(angle))
     #end unit
 
-    def rotate(self, angle, degrees) :
-        "returns the Vector rotated by the specified angle." \
-        " degrees is True if angle is in degrees, False if in radians."
-        if degrees :
-            angle = math.radians(angle)
-        #end if
+    def rotate(self, angle) :
+        "returns the Vector rotated by the specified angle."
         cos = math.cos(angle)
         sin = math.sin(angle)
         return \
@@ -1104,24 +1105,15 @@ class Vector :
             math.hypot(self.x, self.y)
     #end __abs__
 
-    def angle(self, degrees) :
-        "returns the Vector’s rotation angle. degrees is True if the angle is" \
-        " to be returned in degrees, False if in radians."
-        result = math.atan2(self.y, self.x)
-        if degrees :
-            result = math.degrees(result)
-        #end if
+    def angle(self) :
+        "returns the Vector’s rotation angle."
         return \
-            result
+            math.atan2(self.y, self.x)
     #end angle
 
     @staticmethod
-    def from_polar(length, angle, degrees) :
-        "constructs a Vector from a length and a direction." \
-        " degrees is True if angle is in degrees, False if in radians."
-        if degrees :
-            angle = math.radians(angle)
-        #end if
+    def from_polar(length, angle) :
+        "constructs a Vector from a length and a direction."
         return \
             Vector(length * math.cos(angle), length * math.sin(angle))
     #end from_polar
@@ -1243,12 +1235,8 @@ class Matrix :
     #end scaling
 
     @staticmethod
-    def rotation(angle, degrees) :
-        "returns a Matrix that rotates by the specified angle, in degrees" \
-        " iff degrees, else radians."
-        if degrees :
-            angle = math.radians(angle)
-        #end if
+    def rotation(angle) :
+        "returns a Matrix that rotates by the specified angle."
         cos = math.cos(angle)
         sin = math.sin(angle)
         return \
