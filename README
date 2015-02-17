@@ -49,6 +49,7 @@ To initialize FreeType, import the module and create an instance of the
 Library object:
 
     import freetype
+    FT = freetype.FT # easier access to constants
     lib = freetype.Library()
 
 You can ask this instance for the version of FreeType on your system:
@@ -80,11 +81,11 @@ Set the character size for rendering:
 
 Load the glyph for a character code:
 
-    face.load_char(ord("€"), freetype.FT.LOAD_DEFAULT)
+    face.load_char(ord("€"), FT.LOAD_DEFAULT)
 
 Render the glyph to a bitmap:
 
-    face.glyph.render_glyph(freetype.FT.RENDER_MODE_NORMAL)
+    face.glyph.render_glyph(FT.RENDER_MODE_NORMAL)
 
 Obtain a Pycairo ImageSurface object from the bitmap:
 
@@ -155,4 +156,4 @@ These objects are automatically converted to the underlying FreeType
 types, with the right scaling, where appropriate.
 
 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
-2015 February 15
+2015 February 18
