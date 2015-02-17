@@ -1842,7 +1842,7 @@ class Outline :
     #end copy
 
     def translate(self, x_offset, y_offset) :
-        ft.FT_Outline_Translate(self.ftobj, x_offset, y_offset)
+        ft.FT_Outline_Translate(self.ftobj, to_f26_6(x_offset), to_f26_6(y_offset))
     #end translate
 
     def transform(self, matrix) :
