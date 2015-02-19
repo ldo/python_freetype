@@ -70,6 +70,9 @@ pattern string, e.g.:
     face = lib.find_face("palatino:style=italic:weight=1000")
     face = lib.find_face("sans-serif:slant=500")
 
+(See the [Fontconfig user doc](http://www.freedesktop.org/software/fontconfig/fontconfig-user.html)
+for a detailed description of the pattern syntax.)
+
 You can find out which font file was actually loaded, along with the
 font family name and style name, by looking at attributes of the Face:
 
@@ -156,4 +159,4 @@ These objects are automatically converted to the underlying FreeType
 types, with the right scaling, where appropriate.
 
 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
-2015 February 18
+2015 February 19
