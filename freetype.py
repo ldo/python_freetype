@@ -863,6 +863,8 @@ if fc != None :
     fc.FcPatternGetString.restype = ct.c_int
     fc.FcPatternDestroy.argtypes = (ct.c_void_p,)
     fc.FcPatternDestroy.restype = None
+    fc.FcFreeTypeQueryFace.restype = ct.c_void_p
+    fc.FcNameUnparse.restype = ct.c_char_p
 
     class _FC :
         # minimal Fontconfig interface, just sufficient for my needs.
@@ -904,6 +906,16 @@ if fc != None :
     #end _FcPatternManager
 
 #end if
+
+def _ensure_fc() :
+    # ensures Fontconfig is usable, raising suitable exceptions if not.
+    if fc == None :
+        raise NotImplementedError("Fontconfig not available")
+    #end if
+    if not fc.FcInit() :
+        raise RuntimeError("failed to initialize Fontconfig.")
+    #end if
+#end _ensure_fc
 
 libc.memcpy.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_size_t)
 libc.memcpy.restype = None
@@ -1344,12 +1356,7 @@ class Library :
     def find_face(self, pattern, face_index = 0) :
         "finds a font file by trying to match a Fontconfig pattern string, loads an FT.Face" \
         " from it and returns a Face object."
-        if fc == None :
-            raise NotImplementedError("Fontconfig not available")
-        #end if
-        if not fc.FcInit() :
-            raise RuntimeError("failed to initialize Fontconfig.")
-        #end if
+        _ensure_fc()
         with _FcPatternManager() as patterns :
             search_pattern = patterns.collect(fc.FcNameParse(pattern.encode("utf-8")))
             if search_pattern == None :
@@ -1460,6 +1467,21 @@ class Face :
         return \
             ft.FT_Get_X11_Font_Format(self.ftobj).decode("utf-8")
     #end font_format
+
+    @property
+    def fc_pattern(self) :
+        "a Fontconfig pattern string describing this Face."
+        _ensure_fc()
+        with _FcPatternManager() as patterns :
+            descr_pattern = patterns.collect(fc.FcFreeTypeQueryFace(self.ftobj, ct.c_char_p(self.filename.encode("utf-8")), self.ftobj.contents.face_index, None))
+            if descr_pattern == None :
+                raise RuntimeError("cannot construct font name pattern")
+            #end if
+            result = fc.FcNameUnparse(ct.c_void_p(descr_pattern)).decode("utf-8")
+        #end with
+        return \
+            result
+    #end fc_pattern
 
     def select_charmap(self, encoding) :
         check(ft.FT_Select_Charmap(self.ftobj, encoding))
