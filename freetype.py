@@ -864,7 +864,8 @@ if fc != None :
     fc.FcPatternDestroy.argtypes = (ct.c_void_p,)
     fc.FcPatternDestroy.restype = None
     fc.FcFreeTypeQueryFace.restype = ct.c_void_p
-    fc.FcNameUnparse.restype = ct.c_char_p
+    fc.FcNameUnparse.argtypes = (ct.c_void_p,)
+    fc.FcNameUnparse.restype = ct.c_void_p
 
     class _FC :
         # minimal Fontconfig interface, just sufficient for my needs.
@@ -919,6 +920,7 @@ def _ensure_fc() :
 
 libc.memcpy.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_size_t)
 libc.memcpy.restype = None
+libc.free.argtypes = (ct.c_void_p,)
 
 def make_fixed_conv(shift) :
     "returns two functions, the first converting a float value to fixed" \
@@ -1477,7 +1479,12 @@ class Face :
             if descr_pattern == None :
                 raise RuntimeError("cannot construct font name pattern")
             #end if
-            result = fc.FcNameUnparse(ct.c_void_p(descr_pattern)).decode("utf-8")
+            resultstr = fc.FcNameUnparse(descr_pattern)
+            if resultstr == None :
+                raise RuntimeError("cannot unparse font name pattern")
+            #end if
+            result = ct.cast(resultstr, ct.c_char_p).value.decode("utf-8")
+            libc.free(resultstr)
         #end with
         return \
             result
