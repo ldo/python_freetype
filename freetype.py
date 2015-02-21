@@ -1381,7 +1381,7 @@ class Library :
                 raise RuntimeError("cannot get font file name")
             #end if
             if fc.FcPatternGetInteger(found_pattern, b"index", 0, ct.byref(face_index_ptr)) != _FC.FcResultMatch :
-                raise RuntimeError("cannot get font file name")
+                raise RuntimeError("cannot get font file index")
             #end if
             found_filename = name_ptr.value.decode("utf-8")
             face_index = face_index_ptr.value
