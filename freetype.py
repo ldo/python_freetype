@@ -859,8 +859,10 @@ if fc != None :
     fc.FcConfigSubstitute.restype = ct.c_bool
     fc.FcDefaultSubstitute.argtypes = (ct.c_void_p,)
     fc.FcDefaultSubstitute.restype = None
-    fc.FcPatternGetString.argtypes = (ct.c_void_p, ct.c_char_p, ct.c_void_p, ct.c_void_p)
+    fc.FcPatternGetString.argtypes = (ct.c_void_p, ct.c_char_p, ct.c_int, ct.c_void_p)
     fc.FcPatternGetString.restype = ct.c_int
+    fc.FcPatternGetInteger.argtypes = (ct.c_void_p, ct.c_char_p, ct.c_int, ct.c_void_p)
+    fc.FcPatternGetInteger.restype = ct.c_int
     fc.FcPatternDestroy.argtypes = (ct.c_void_p,)
     fc.FcPatternDestroy.restype = None
     fc.FcFreeTypeQueryFace.restype = ct.c_void_p
@@ -1355,7 +1357,7 @@ class Library :
             Face(self, result_face, filename)
     #end new_face
 
-    def find_face(self, pattern, face_index = 0) :
+    def find_face(self, pattern) :
         "finds a font file by trying to match a Fontconfig pattern string, loads an FT.Face" \
         " from it and returns a Face object."
         _ensure_fc()
@@ -1374,10 +1376,15 @@ class Library :
                 raise RuntimeError("cannot match font name")
             #end if
             name_ptr = ct.c_char_p()
+            face_index_ptr = ct.c_int()
             if fc.FcPatternGetString(found_pattern, b"file", 0, ct.byref(name_ptr)) != _FC.FcResultMatch :
                 raise RuntimeError("cannot get font file name")
             #end if
+            if fc.FcPatternGetInteger(found_pattern, b"index", 0, ct.byref(face_index_ptr)) != _FC.FcResultMatch :
+                raise RuntimeError("cannot get font file name")
+            #end if
             found_filename = name_ptr.value.decode("utf-8")
+            face_index = face_index_ptr.value
         #end with
         return \
             self.new_face(found_filename, face_index)
