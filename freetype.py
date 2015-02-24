@@ -432,8 +432,8 @@ class FT :
                 ("type", Size_Request_Type),
                 ("width", ct.c_long),
                 ("height", ct.c_long),
-                ("horiResolution", ct.c_uint),
-                ("vertResolution", ct.c_uint),
+                ("horiResolution", ct.c_uint), # actually 26.6, it appears
+                ("vertResolution", ct.c_uint), # actually 26.6, it appears
             ]
     #end Size_RequestRec
     Size_Request = ct.POINTER(Size_RequestRec)
@@ -1450,6 +1450,8 @@ class Face :
                         item[k] = getattr(elt, k)
                         if t is FT.Encoding :
                             item[k] = from_tag(item[k])
+                        elif t is FT.Pos :
+                            item[k] = from_f26_6(item[k])
                         #end if
                     #end if
                 #end for
