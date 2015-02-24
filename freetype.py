@@ -849,6 +849,7 @@ ft.FT_Set_Charmap.restype = FT.Error
 ft.FT_Get_First_Char.restype = ct.c_ulong
 ft.FT_Get_Next_Char.restype = ct.c_ulong
 ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
+ft.FT_Get_Postscript_Name.restype = ct.c_char_p
 ft.FT_Get_FSType_Flags.restype = ct.c_ushort
 
 if fc != None :
@@ -1645,6 +1646,18 @@ class Face :
         return \
             tuple((from_f16_16, int)[load_flags & FT.LOAD_NO_SCALE != 0](item) for item in result)
     #end get_advances
+
+    @property
+    def postscript_name(self) :
+        result = ft.FT_Get_Postscript_Name(self.ftobj)
+        if bool(result) :
+            result = result.decode("utf-8")
+        else :
+            result = None
+        #end if
+        return \
+            result
+    #end postscript_name
 
     @property
     def fstype_flags(self) :
