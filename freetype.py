@@ -1647,8 +1647,24 @@ class Face :
             tuple((from_f16_16, int)[load_flags & FT.LOAD_NO_SCALE != 0](item) for item in result)
     #end get_advances
 
+    def get_glyph_name(self, glyph_index) :
+        "returns the name of the specified glyph."
+        buffer_max = 256 # enough?
+        buffer = (buffer_max * ct.c_char)()
+        check(ft.FT_Get_Glyph_Name(self.ftobj, int(glyph_index), ct.byref(buffer), buffer_max))
+        return \
+            buffer.value.decode("utf-8")
+    #end get_glyph_name
+
+    def get_name_index(self, glyph_name) :
+        "returns the index of the specified glyph name."
+        return \
+            ft.FT_Get_Name_Index(self.ftobj, ct.c_char_p(glyph_name.encode("utf-8")))
+    #end get_name_index
+
     @property
     def postscript_name(self) :
+        "the PostScript name of the font, if it has one."
         result = ft.FT_Get_Postscript_Name(self.ftobj)
         if bool(result) :
             result = result.decode("utf-8")
