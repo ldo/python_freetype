@@ -1548,6 +1548,19 @@ class Face :
           ))
     #end set_char_size
 
+    def set_pixel_sizes(self, pixel_width, pixel_height) :
+        check(ft.FT_Set_Pixel_Sizes(self.ftobj, int(pixel_width), int(pixel_height)))
+    #end set_pixel_sizes
+
+    def request_size(self, reqtype, width, height, horiResolution, vertResolution) :
+        req = FT.Size_RequestRec(int(reqtype), int(width), int(height), to_f26_6(horiResolution), to_f26_6(vertResolution))
+        check(ft.FT_Request_Size(self.ftobj, ct.byref(req)))
+    #end request_size
+
+    def select_size(self, strike_index) :
+        check(ft.FT_Select_Size(self.ftobj, int(strike_index)))
+    #end select_size
+
     def set_transform(self, matrix, delta) :
         "matrix and delta should be the Pythonic Matrix and Vector, not the FT types."
         ftmat = matrix.to_ft()
