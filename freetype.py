@@ -967,18 +967,18 @@ def check(sts) :
 def def_extra_fields(clas, simple_fields, struct_fields) :
     # bulk definition of extra read-only Python attributes that correspond in a
     # straightforward fashion to FT structure fields. Assumes the instance attribute
-    # “ftobj” points to the FT object to be decoded.
+    # “_ftobj” points to the FT object to be decoded.
 
     def def_simple_attr(field, doc, convert) :
         if convert != None :
             def attr(self) :
                 return \
-                    convert(getattr(self.ftobj.contents, field))
+                    convert(getattr(self._ftobj.contents, field))
             #end attr
         else :
             def attr(self) :
                 return \
-                    getattr(self.ftobj.contents, field)
+                    getattr(self._ftobj.contents, field)
             #end attr
         #end if
         if doc != None :
@@ -993,7 +993,7 @@ def def_extra_fields(clas, simple_fields, struct_fields) :
             return \
                 struct_to_dict \
                   (
-                    getattr(self.ftobj.contents, field),
+                    getattr(self._ftobj.contents, field),
                     fieldtype,
                     indirect,
                     extra_decode
@@ -1398,9 +1398,9 @@ class Face :
     " or Library.find_face instead."
 
     def __init__(self, lib, face, filename) :
-        self.ftobj = face
+        self._ftobj = face
         self._lib = weakref.ref(lib)
-        facerec = ct.cast(self.ftobj, FT.Face).contents
+        facerec = ct.cast(self._ftobj, FT.Face).contents
         self.filename = filename
         # following attrs don't change, but perhaps it is simpler to define them
         # via def_extra_fields anyway
@@ -1466,10 +1466,10 @@ class Face :
     #end __init__
 
     def __del__(self) :
-        if self.ftobj != None and self._lib() != None :
+        if self._ftobj != None and self._lib() != None :
             # self._lib might have vanished prematurely during program exit
-            check(ft.FT_Done_Face(self.ftobj))
-            self.ftobj = None
+            check(ft.FT_Done_Face(self._ftobj))
+            self._ftobj = None
         #end if
     #end __del__
 
@@ -1477,7 +1477,7 @@ class Face :
     def font_format(self) :
         "the font format."
         return \
-            ft.FT_Get_X11_Font_Format(self.ftobj).decode("utf-8")
+            ft.FT_Get_X11_Font_Format(self._ftobj).decode("utf-8")
     #end font_format
 
     @property
@@ -1485,7 +1485,7 @@ class Face :
         "a Fontconfig pattern string describing this Face."
         _ensure_fc()
         with _FcPatternManager() as patterns :
-            descr_pattern = patterns.collect(fc.FcFreeTypeQueryFace(self.ftobj, ct.c_char_p(self.filename.encode("utf-8")), self.ftobj.contents.face_index, None))
+            descr_pattern = patterns.collect(fc.FcFreeTypeQueryFace(self._ftobj, ct.c_char_p(self.filename.encode("utf-8")), self._ftobj.contents.face_index, None))
             if descr_pattern == None :
                 raise RuntimeError("cannot construct font name pattern")
             #end if
@@ -1501,12 +1501,12 @@ class Face :
     #end fc_pattern
 
     def select_charmap(self, encoding) :
-        check(ft.FT_Select_Charmap(self.ftobj, encoding))
+        check(ft.FT_Select_Charmap(self._ftobj, encoding))
     #end select_charmap
 
     def set_charmap(self, charmap) :
         "charmap should be an element of self.charmaps"
-        check(ft.FT_Set_Charmap(self.ftobj, charmap["."]))
+        check(ft.FT_Set_Charmap(self._ftobj, charmap["."]))
     #end set_charmap
 
     def get_charmap_index(self, charmap) :
@@ -1541,7 +1541,7 @@ class Face :
         #end if
         check(ft.FT_Set_Char_Size
           (
-            self.ftobj,
+            self._ftobj,
             to_f26_6(width),
             to_f26_6(height),
             horz_resolution,
@@ -1550,52 +1550,52 @@ class Face :
     #end set_char_size
 
     def set_pixel_sizes(self, pixel_width, pixel_height) :
-        check(ft.FT_Set_Pixel_Sizes(self.ftobj, int(pixel_width), int(pixel_height)))
+        check(ft.FT_Set_Pixel_Sizes(self._ftobj, int(pixel_width), int(pixel_height)))
     #end set_pixel_sizes
 
     def request_size(self, reqtype, width, height, horiResolution, vertResolution) :
         req = FT.Size_RequestRec(int(reqtype), int(width), int(height), to_f26_6(horiResolution), to_f26_6(vertResolution))
-        check(ft.FT_Request_Size(self.ftobj, ct.byref(req)))
+        check(ft.FT_Request_Size(self._ftobj, ct.byref(req)))
     #end request_size
 
     def select_size(self, strike_index) :
-        check(ft.FT_Select_Size(self.ftobj, int(strike_index)))
+        check(ft.FT_Select_Size(self._ftobj, int(strike_index)))
     #end select_size
 
     def set_transform(self, matrix, delta) :
         "matrix and delta should be the Pythonic Matrix and Vector, not the FT types."
         ftmat = matrix.to_ft()
         ftdelta = delta.to_ft_f26_6() # this is a guess
-        ft.FT_Set_Transform(self.ftobj, ct.byref(ftmat), ct.byref(ftdelta))
+        ft.FT_Set_Transform(self._ftobj, ct.byref(ftmat), ct.byref(ftdelta))
     #end set_transform
 
     def char_glyphs(self) :
         "generator which yields successive (char_code, glyph_code) pairs defined for" \
         " the current charmap."
         glyph_index = ct.c_uint(0)
-        char_code = ft.FT_Get_First_Char(self.ftobj, ct.byref(glyph_index))
+        char_code = ft.FT_Get_First_Char(self._ftobj, ct.byref(glyph_index))
         while glyph_index.value != 0 :
             yield char_code, glyph_index.value
-            char_code = ft.FT_Get_Next_Char(self.ftobj, char_code, ct.byref(glyph_index))
+            char_code = ft.FT_Get_Next_Char(self._ftobj, char_code, ct.byref(glyph_index))
         #end while
     #end char_glyphs
 
     def get_char_index(self, charcode) :
         return \
-            ft.FT_Get_Char_Index(self.ftobj, charcode)
+            ft.FT_Get_Char_Index(self._ftobj, charcode)
     #end get_char_index
 
     def load_glyph(self, glyph_index, load_flags) :
-        check(ft.FT_Load_Glyph(self.ftobj, glyph_index, load_flags))
+        check(ft.FT_Load_Glyph(self._ftobj, glyph_index, load_flags))
     #end load_glyph
 
     def load_char(self, char_code, load_flags) :
-        check(ft.FT_Load_Char(self.ftobj, char_code, load_flags))
+        check(ft.FT_Load_Char(self._ftobj, char_code, load_flags))
     #end load_char
 
     def glyph_slots(self) :
         "generator which yields each element of the linked list of glyph slots in turn."
-        glyph = self.ftobj.contents.glyph
+        glyph = self._ftobj.contents.glyph
         while True :
             yield GlyphSlot(glyph)
             try :
@@ -1611,13 +1611,13 @@ class Face :
     def glyph(self) :
         "the first or only glyph slot."
         return \
-            GlyphSlot(self.ftobj.contents.glyph)
+            GlyphSlot(self._ftobj.contents.glyph)
     #end glyph
 
     def get_kerning(self, left_glyph, right_glyph, kern_mode) :
         result = FT.Vector()
-        check(ft.FT_Get_Kerning(self.ftobj, left_glyph, right_glyph, kern_mode, ct.byref(result)))
-        if self.ftobj.contents.face_flags & FT.FACE_FLAG_SCALABLE != 0 and kern_mode != FT.KERNING_UNSCALED :
+        check(ft.FT_Get_Kerning(self._ftobj, left_glyph, right_glyph, kern_mode, ct.byref(result)))
+        if self._ftobj.contents.face_flags & FT.FACE_FLAG_SCALABLE != 0 and kern_mode != FT.KERNING_UNSCALED :
             result = Vector.from_ft_f26_6(result)
         else :
             result = Vector.from_ft_int(result)
@@ -1628,21 +1628,21 @@ class Face :
 
     def get_track_kerning(self, point_size, degree) :
         result = FT.Fixed(0)
-        check(ft.FT_Get_Track_Kerning(self.ftobj, to_f16_16(point_size), degree, ct.byref(result)))
+        check(ft.FT_Get_Track_Kerning(self._ftobj, to_f16_16(point_size), degree, ct.byref(result)))
         return \
             from_f26_6(result.value)
     #end get_track_kerning
 
     def get_advance(self, gindex, load_flags) :
         result = FT.Fixed(0)
-        check(ft.FT_Get_Advance(self.ftobj, gindex, load_flags, ct.byref(result)))
+        check(ft.FT_Get_Advance(self._ftobj, gindex, load_flags, ct.byref(result)))
         return \
             (from_f16_16, int)[load_flags & FT.LOAD_NO_SCALE != 0](result.value)
     #end get_advance
 
     def get_advances(self, start, count, load_flags) :
         result = (count * FT.Fixed)()
-        check(ft.FT_Get_Advances(self.ftobj, start, count, load_flags, ct.byref(result)))
+        check(ft.FT_Get_Advances(self._ftobj, start, count, load_flags, ct.byref(result)))
         return \
             tuple((from_f16_16, int)[load_flags & FT.LOAD_NO_SCALE != 0](item) for item in result)
     #end get_advances
@@ -1651,7 +1651,7 @@ class Face :
         "returns the name of the specified glyph."
         buffer_max = 256 # enough?
         buffer = (buffer_max * ct.c_char)()
-        check(ft.FT_Get_Glyph_Name(self.ftobj, int(glyph_index), ct.byref(buffer), buffer_max))
+        check(ft.FT_Get_Glyph_Name(self._ftobj, int(glyph_index), ct.byref(buffer), buffer_max))
         return \
             buffer.value.decode("utf-8")
     #end get_glyph_name
@@ -1659,13 +1659,13 @@ class Face :
     def get_name_index(self, glyph_name) :
         "returns the index of the specified glyph name."
         return \
-            ft.FT_Get_Name_Index(self.ftobj, ct.c_char_p(glyph_name.encode("utf-8")))
+            ft.FT_Get_Name_Index(self._ftobj, ct.c_char_p(glyph_name.encode("utf-8")))
     #end get_name_index
 
     @property
     def postscript_name(self) :
         "the PostScript name of the font, if it has one."
-        result = ft.FT_Get_Postscript_Name(self.ftobj)
+        result = ft.FT_Get_Postscript_Name(self._ftobj)
         if bool(result) :
             result = result.decode("utf-8")
         else :
@@ -1679,7 +1679,7 @@ class Face :
     def fstype_flags(self) :
         "the FSType flags which specify the licensing restrictions on font embedding/subsetting."
         return \
-            ft.FT_Get_FSType_Flags(self.ftobj)
+            ft.FT_Get_FSType_Flags(self._ftobj)
     #end fstype_flags
 
 #end Face
@@ -1731,14 +1731,14 @@ class GlyphSlot :
     " call Face.glyph_slots or access via Face.glyph and GlyphSlot.next links instead."
 
     def __init__(self, ftobj) :
-        self.ftobj = ftobj
+        self._ftobj = ftobj
     #end __init__
 
     @property
     def next(self) :
         "link to next GlyphSlot, if any."
         try :
-            result = GlyphSlot(self.ftobj.contents.next)
+            result = GlyphSlot(self._ftobj.contents.next)
             _ = result.advance # check it's not just wrapping a null pointer
         except ValueError : # assume because of NULL pointer access
             result = None
@@ -1750,48 +1750,48 @@ class GlyphSlot :
     @property
     def outline(self) :
         "the Outline, if format = FT.GLYPH_FORMAT_OUTLINE."
-        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_OUTLINE
+        assert self._ftobj.contents.format == FT.GLYPH_FORMAT_OUTLINE
         return \
-            Outline(ct.pointer(self.ftobj.contents.outline), self, None)
+            Outline(ct.pointer(self._ftobj.contents.outline), self, None)
     #end outline
 
     def render_glyph(self, render_mode) :
         "renders the loaded glyph to a bitmap."
-        check(ft.FT_Render_Glyph(self.ftobj, render_mode))
+        check(ft.FT_Render_Glyph(self._ftobj, render_mode))
     #end render_glyph
 
     @property
     def bitmap(self) :
         "the Bitmap, if format = FT.GLYPH_FORMAT_BITMAP."
-        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        assert self._ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
         return \
-            Bitmap(ct.pointer(self.ftobj.contents.bitmap), self, None)
+            Bitmap(ct.pointer(self._ftobj.contents.bitmap), self, None)
     #end bitmap
 
     @property
     def bitmap_left(self) :
         "bitmap left bearing in integer pixels (only if glyph is a bitmap)"
-        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        assert self._ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
         return \
-            self.ftobj.contents.bitmap_left
+            self._ftobj.contents.bitmap_left
     #end bitmap_left
 
     @property
     def bitmap_top(self) :
         "bitmap top bearing in integer pixels (only if glyph is a bitmap)"
-        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        assert self._ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
         return \
-            self.ftobj.contents.bitmap_top
+            self._ftobj.contents.bitmap_top
     #end bitmap_left
 
     def own_bitmap(self) :
         "ensures the GlyphSlot has its own copy of bitmap storage."
-        check(ft.FT_GlyphSlot_Own_Bitmap(self.ftobj))
+        check(ft.FT_GlyphSlot_Own_Bitmap(self._ftobj))
     #end own_bitmap
 
     def get_glyph(self) :
         result = FT.Glyph()
-        check(ft.FT_Get_Glyph(self.ftobj, ct.byref(result)))
+        check(ft.FT_Get_Glyph(self._ftobj, ct.byref(result)))
         return \
             Glyph(result)
     #end get_glyph
@@ -1822,15 +1822,15 @@ class GlyphSlot :
         # bug in some versions of FreeType (e.g. 2.5.2): FT_Get_SubGlyph_Info
         # currently always returns error, even on success.
         # so rather than check its error return, I do my own validation:
-        if self.ftobj.contents.format != FT.GLYPH_FORMAT_COMPOSITE :
+        if self._ftobj.contents.format != FT.GLYPH_FORMAT_COMPOSITE :
             raise TypeError("only composite glyphs have subglyphs")
         #end if
-        if sub_index < 0 or sub_index >= self.ftobj.contents.num_subglyphs :
+        if sub_index < 0 or sub_index >= self._ftobj.contents.num_subglyphs :
             raise IndexError("subglyph subindex out of range")
         #end if
         ft.FT_Get_SubGlyph_Info \
           (
-            self.ftobj,
+            self._ftobj,
             sub_index,
             ct.byref(p_index),
             ct.byref(p_flags),
@@ -1877,7 +1877,7 @@ class Outline :
     " GlyphSlot.outline or Outline.new()."
 
     def __init__(self, ftobj, owner, lib) :
-        self.ftobj = ftobj
+        self._ftobj = ftobj
         assert (owner != None) != (lib != None)
         if owner != None :
             self.owner = owner # keep a strong ref to ensure it doesn’t disappear unexpectedly
@@ -1890,9 +1890,9 @@ class Outline :
 
     def __del__(self) :
         if self.owner == None and self._lib != None and self._lib() != None :
-            if self.ftobj != None :
-                check(ft.FT_Outline_Done(self._lib().lib, self.ftobj))
-                self.ftobj = None
+            if self._ftobj != None :
+                check(ft.FT_Outline_Done(self._lib().lib, self._ftobj))
+                self._ftobj = None
             #end if
         #end if
     #end __del__
@@ -1918,42 +1918,42 @@ class Outline :
         if not isinstance(other, Outline) :
             raise TypeError("can only copy into another Outline")
         #end if
-        check(ft.FT_Outline_Copy(self.ftobj, other.ftobj))
+        check(ft.FT_Outline_Copy(self._ftobj, other._ftobj))
     #end copy
 
     def translate(self, x_offset, y_offset) :
-        ft.FT_Outline_Translate(self.ftobj, to_f26_6(x_offset), to_f26_6(y_offset))
+        ft.FT_Outline_Translate(self._ftobj, to_f26_6(x_offset), to_f26_6(y_offset))
     #end translate
 
     def transform(self, matrix) :
         "transforms the Outline by the specified Matrix."
-        ft.FT_Outline_Transform(self.ftobj, ct.byref(matrix.to_ft()))
+        ft.FT_Outline_Transform(self._ftobj, ct.byref(matrix.to_ft()))
     #end transform
 
     def embolden(self, strength) :
         "uniformly emboldens the Outline."
-        check(ft.FT_Outline_Embolden(self.ftobj, to_f26_6(strength)))
+        check(ft.FT_Outline_Embolden(self._ftobj, to_f26_6(strength)))
     #end embolden
 
     def embolden_xy(self, x_strength, y_strength) :
         "non-uniformly emboldens the Outline."
-        check(ft.FT_Outline_EmboldenXY(self.ftobj, to_f26_6(x_strength), to_f26_6(y_strength)))
+        check(ft.FT_Outline_EmboldenXY(self._ftobj, to_f26_6(x_strength), to_f26_6(y_strength)))
     #end embolden
 
     def reverse(self) :
         "reverses the Outline direction."
-        ft.FT_Outline_Reverse(self.ftobj)
+        ft.FT_Outline_Reverse(self._ftobj)
     #end reverse
 
     def check(self) :
         "checks the Outline contents."
-        check(ft.FT_Outline_Check(self.ftobj))
+        check(ft.FT_Outline_Check(self._ftobj))
     #end check
 
     def get_cbox(self) :
         "returns the Outline’s control box, which encloses all the control points."
         result = FT.BBox()
-        ft.FT_Outline_Get_CBox(self.ftobj, ct.byref(result))
+        ft.FT_Outline_Get_CBox(self._ftobj, ct.byref(result))
         return \
             BBox.from_ft_f26_6(result)
     #end get_cbox
@@ -1961,7 +1961,7 @@ class Outline :
     def get_bbox(self) :
         "returns the Outline’s bounding box, which encloses the entire glyph."
         result = FT.BBox()
-        check(ft.FT_Outline_Get_BBox(self.ftobj, ct.byref(result)))
+        check(ft.FT_Outline_Get_BBox(self._ftobj, ct.byref(result)))
         return \
             BBox.from_ft_f26_6(result)
     #end get_bbox
@@ -1974,12 +1974,12 @@ class Outline :
         if not isinstance(the_bitmap, Bitmap) :
             raise TypeError("expecting the_bitmap to be a Bitmap")
         #end if
-        check(ft.FT_Outline_Get_Bitmap(lib.lib, self.ftobj, the_bitmap.ftobj))
+        check(ft.FT_Outline_Get_Bitmap(lib.lib, self._ftobj, the_bitmap._ftobj))
     #end get_bitmap
 
     def get_orientation(self) :
         return \
-            ft.FT_Outline_Get_Orientation(self.ftobj)
+            ft.FT_Outline_Get_Orientation(self._ftobj)
     #end get_orientation
 
     def render \
@@ -2005,11 +2005,11 @@ class Outline :
         #end if
         params = FT.Raster_Params()
         if target != None :
-            params.target = target.ftobj # BitmapPtr
+            params.target = target._ftobj # BitmapPtr
         else :
             params.target = None
         #end if
-        # params.source = self.ftobj # will be done by FreeType anyway
+        # params.source = self._ftobj # will be done by FreeType anyway
         params.flags = flags
         params.gray_spans = FT.SpanFunc(gray_spans)
         params.black_spans = FT.SpanFunc(0) # unused
@@ -2021,7 +2021,7 @@ class Outline :
         else :
             params.clip_box = FT.BBox()
         #end if
-        check(ft.FT_Outline_Render(lib.lib, self.ftobj, ct.byref(params)))
+        check(ft.FT_Outline_Render(lib.lib, self._ftobj, ct.byref(params)))
     #end render
 
     # TODO: do I need more direct access to FT_Outline_Decompose?
@@ -2035,7 +2035,7 @@ class Outline :
         " points, each in turn being a triple (coord : Vector, point_type : CURVEPT, dropout_flags : int)."
         result = []
         pointindex = 0
-        ftobj = self.ftobj.contents
+        ftobj = self._ftobj.contents
         for contourindex in range(0, ftobj.n_contours) :
             contour = []
             endpoint = ftobj.contours[contourindex]
@@ -2118,13 +2118,13 @@ class Outline :
             shift = 0,
             delta = 0,
           )
-        check(ft.FT_Outline_Decompose(self.ftobj, ct.byref(funcs), ct.c_void_p(0)))
+        check(ft.FT_Outline_Decompose(self._ftobj, ct.byref(funcs), ct.c_void_p(0)))
     #end draw
 
     def _append(self, that) :
         # appends the contours from FT.Outline that onto this one, extending the arrays appropriately.
-        this_nr_contours = self.ftobj.contents.n_contours
-        this_nr_points = self.ftobj.contents.n_points
+        this_nr_contours = self._ftobj.contents.n_contours
+        this_nr_points = self._ftobj.contents.n_points
         that_nr_contours = that.contents.n_contours
         that_nr_points = that.contents.n_points
         result = ct.pointer(FT.Outline())
@@ -2138,7 +2138,7 @@ class Outline :
         libc.memcpy \
           (
             result.contents.points,
-            self.ftobj.contents.points,
+            self._ftobj.contents.points,
             this_nr_points * ct.sizeof(FT.Vector)
           )
         libc.memcpy \
@@ -2150,7 +2150,7 @@ class Outline :
         libc.memcpy \
           (
             result.contents.tags,
-            self.ftobj.contents.tags,
+            self._ftobj.contents.tags,
             this_nr_points * ct.sizeof(ct.c_ubyte)
           )
         libc.memcpy \
@@ -2162,7 +2162,7 @@ class Outline :
         libc.memcpy \
           (
             result.contents.contours,
-            self.ftobj.contents.contours,
+            self._ftobj.contents.contours,
             this_nr_contours * ct.sizeof(ct.c_short)
           )
         libc.memcpy \
@@ -2171,9 +2171,9 @@ class Outline :
             that.contents.contours,
             that_nr_contours * ct.sizeof(ct.c_short)
           )
-        result.contents.flags = self.ftobj.contents.flags # good enough?
-        check(ft.FT_Outline_Done(self._lib().lib, self.ftobj))
-        self.ftobj = result
+        result.contents.flags = self._ftobj.contents.flags # good enough?
+        check(ft.FT_Outline_Done(self._lib().lib, self._ftobj))
+        self._ftobj = result
     #end _append
 
     def append(self, other) :
@@ -2181,19 +2181,19 @@ class Outline :
         if not isinstance(other, Outline) :
             raise TypeError("expecting another Outline")
         #end if
-        self._append(other.ftobj)
+        self._append(other._ftobj)
     #end append
 
     def get_inside_border(self) :
         "returns the inside border for the Outline."
         return \
-            ft.FT_Outline_GetInsideBorder(self.ftobj)
+            ft.FT_Outline_GetInsideBorder(self._ftobj)
     #end get_inside_border
 
     def get_outside_border(self) :
         "returns the outside border for the Outline."
         return \
-            ft.FT_Outline_GetOutsideBorder(self.ftobj)
+            ft.FT_Outline_GetOutsideBorder(self._ftobj)
     #end get_outside_border
 
 #end Outline
@@ -2216,20 +2216,20 @@ class Glyph :
     "Pythonic representation of an FT.Glyph. Get one of these from GlyphSlot.get_glyph."
 
     def __init__(self, ftobj) :
-        self.ftobj = ftobj
+        self._ftobj = ftobj
     #end __init__
 
     def __del__(self) :
-        if self.ftobj != None :
-            ft.FT_Done_Glyph(self.ftobj)
-            self.ftobj = None
+        if self._ftobj != None :
+            ft.FT_Done_Glyph(self._ftobj)
+            self._ftobj = None
         #end if
     #end __del__
 
     def copy(self) :
         "returns a copy of the Glyph."
         result = FT.Glyph()
-        check(ft.FT_Glyph_Copy(self.ftobj, ct.byref(result)))
+        check(ft.FT_Glyph_Copy(self._ftobj, ct.byref(result)))
         return \
             Glyph(result)
     #end copy
@@ -2237,7 +2237,7 @@ class Glyph :
     def get_cbox(self, bbox_mode) :
         "returns a glyph’s control box, which contains all the curve control points."
         result = FT.BBox()
-        ft.FT_Glyph_Get_CBox(self.ftobj, bbox_mode, ct.byref(result))
+        ft.FT_Glyph_Get_CBox(self._ftobj, bbox_mode, ct.byref(result))
         return \
             (BBox.from_ft_f26_6, BBox.from_ft_int)[bbox_mode >= FT.GLYPH_BBOX_TRUNCATE](result)
     #end get_cbox
@@ -2247,10 +2247,10 @@ class Glyph :
         " If replace, then the contents of the current Glyph is replaced; otherwise" \
         " a new Glyph object is returned. FIXME: FreeType bug? replace arg makes no" \
         " difference; the Glyph object is always replaced."
-        result = ct.pointer(self.ftobj)
+        result = ct.pointer(self._ftobj)
         check(ft.FT_Glyph_To_Bitmap(result, render_mode, ct.byref(origin.to_ft_f26_6()), int(replace)))
         if replace :
-            self.ftobj = result.contents
+            self._ftobj = result.contents
             result = None
         else :
             result = Glyph(result.contents)
@@ -2262,33 +2262,33 @@ class Glyph :
     @property
     def outline(self) :
         "the Outline, if format = FT.GLYPH_FORMAT_OUTLINE."
-        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_OUTLINE
+        assert self._ftobj.contents.format == FT.GLYPH_FORMAT_OUTLINE
         return \
-            Outline(ct.pointer(ct.cast(self.ftobj, FT.OutlineGlyph).contents.outline), self, None)
+            Outline(ct.pointer(ct.cast(self._ftobj, FT.OutlineGlyph).contents.outline), self, None)
     #end outline
 
     @property
     def left(self) :
         "bitmap left bearing in integer pixels (only if glyph is a bitmap)"
-        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        assert self._ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
         return \
-            ct.cast(self.ftobj, FT.BitmapGlyph).contents.left
+            ct.cast(self._ftobj, FT.BitmapGlyph).contents.left
     #end left
 
     @property
     def top(self) :
         "bitmap top bearing in integer pixels (only if glyph is a bitmap)"
-        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        assert self._ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
         return \
-            ct.cast(self.ftobj, FT.BitmapGlyph).contents.top
+            ct.cast(self._ftobj, FT.BitmapGlyph).contents.top
     #end top
 
     @property
     def bitmap(self) :
         "the Bitmap, if format = FT.GLYPH_FORMAT_BITMAP."
-        assert self.ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
+        assert self._ftobj.contents.format == FT.GLYPH_FORMAT_BITMAP
         return \
-            Bitmap(ct.pointer(ct.cast(self.ftobj, FT.BitmapGlyph).contents.bitmap), self, None)
+            Bitmap(ct.pointer(ct.cast(self._ftobj, FT.BitmapGlyph).contents.bitmap), self, None)
     #end bitmap
 
 #end Glyph
@@ -2315,7 +2315,7 @@ class Bitmap :
     def __init__(self, ftobj, owner, lib) :
         # lib is not None if I am to manage my own storage under control of FreeType;
         # owner is not None if it is the containing structure that owns my storage.
-        self.ftobj = ftobj
+        self._ftobj = ftobj
         self.buffer = None
         assert owner == None or lib == None
         if owner != None :
@@ -2329,9 +2329,9 @@ class Bitmap :
 
     def __del__(self) :
         if self.buffer == None and self._lib != None and self._lib() != None :
-            if self.ftobj != None :
-                check(ft.FT_Bitmap_Done(self._lib().lib, self.ftobj))
-                self.ftobj = None
+            if self._ftobj != None :
+                check(ft.FT_Bitmap_Done(self._lib().lib, self._ftobj))
+                self._ftobj = None
             #end if
         #end if
     #end __del__
@@ -2364,7 +2364,7 @@ class Bitmap :
     def copy_with_array(self) :
         "returns a new Bitmap which is a copy of this one, with storage residing in" \
         " a Python array."
-        src = self.ftobj.contents
+        src = self._ftobj.contents
         dst = FT.Bitmap()
         ft.FT_Bitmap_New(ct.byref(dst))
         for \
@@ -2398,7 +2398,7 @@ class Bitmap :
         " allocated by the specified Library."
         result = ct.pointer(FT.Bitmap())
         ft.FT_Bitmap_New(result)
-        check(ft.FT_Bitmap_Copy(lib.lib, self.ftobj, result))
+        check(ft.FT_Bitmap_Copy(lib.lib, self._ftobj, result))
         return \
             Bitmap(result, None, lib.lib)
     #end copy
@@ -2410,7 +2410,7 @@ class Bitmap :
         check(ft.FT_Bitmap_Embolden
           (
             lib.lib,
-            self.ftobj,
+            self._ftobj,
             to_f26_6(x_strength),
             to_f26_6(y_strength)
           ))
@@ -2421,7 +2421,7 @@ class Bitmap :
         " and the specified alignment for the pitch (typically 1, 2 or 4)."
         result = ct.pointer(FT.Bitmap())
         ft.FT_Bitmap_New(result)
-        check(ft.FT_Bitmap_Convert(lib.lib, self.ftobj, result, alignment))
+        check(ft.FT_Bitmap_Convert(lib.lib, self._ftobj, result, alignment))
         return \
             Bitmap(result, None, lib.lib)
     #end convert
@@ -2448,7 +2448,7 @@ class Bitmap :
             buffer_size = self.rows * dst_pitch
             pixels = array.array("B", b"0" * buffer_size)
             dst = pixels.buffer_info()[0]
-            src = ct.cast(self.ftobj.contents.buffer, ct.c_void_p).value
+            src = ct.cast(self._ftobj.contents.buffer, ct.c_void_p).value
             if dst_pitch == src_pitch :
                 libc.memcpy(dst, src, buffer_size)
             else :
@@ -2498,13 +2498,13 @@ class Stroker :
         self._lib = weakref.ref(lib)
         result = ct.pointer(ct.c_void_p())
         check(ft.FT_Stroker_New(lib.lib, result))
-        self.ftobj = result.contents
+        self._ftobj = result.contents
     #end __init__
 
     def __del__(self) :
-        if self.ftobj != None and self._lib != None and self._lib() != None :
-            ft.FT_Stroker_Done(self.ftobj)
-            self.ftobj = None
+        if self._ftobj != None and self._lib != None and self._lib() != None :
+            ft.FT_Stroker_Done(self._ftobj)
+            self._ftobj = None
         #end if
     #end __del__
 
@@ -2512,10 +2512,10 @@ class Stroker :
         if not isinstance(glyph, Glyph) :
             raise TypeError("expecting a Glyph")
         #end if
-        result = ct.pointer(glyph.ftobj)
-        check(ft.FT_Glyph_Stroke(result, self.ftobj, int(replace)))
+        result = ct.pointer(glyph._ftobj)
+        check(ft.FT_Glyph_Stroke(result, self._ftobj, int(replace)))
         if replace :
-            glyph.ftobj = result.contents
+            glyph._ftobj = result.contents
             result = None
         else :
             result = Glyph(result.contents)
@@ -2528,10 +2528,10 @@ class Stroker :
         if not isinstance(glyph, Glyph) :
             raise TypeError("expecting a Glyph")
         #end if
-        result = ct.pointer(glyph.ftobj)
-        check(ft.FT_Glyph_StrokeBorder(result, self.ftobj, int(inside), int(replace)))
+        result = ct.pointer(glyph._ftobj)
+        check(ft.FT_Glyph_StrokeBorder(result, self._ftobj, int(inside), int(replace)))
         if replace :
-            glyph.ftobj = result.contents
+            glyph._ftobj = result.contents
             result = None
         else :
             result = Glyph(result.contents)
@@ -2541,18 +2541,18 @@ class Stroker :
     #end stroke_border
 
     def set(self, radius, line_cap, line_join, miter_limit) :
-        ft.FT_Stroker_Set(self.ftobj, to_f16_16(radius), line_cap, line_join, to_f16_16(miter_limit))
+        ft.FT_Stroker_Set(self._ftobj, to_f16_16(radius), line_cap, line_join, to_f16_16(miter_limit))
     #end set
 
     def rewind(self) :
-        ft.FT_Stroker_Rewind(self.ftobj)
+        ft.FT_Stroker_Rewind(self._ftobj)
     #end rewind
 
     def parse_outline(self, outline, opened) :
         if not isinstance(outline, Outline) :
             raise TypeError("expecting an Outline")
         #end if
-        check(ft.FT_Stroker_ParseOutline(self.ftobj, outline.ftobj, int(opened)))
+        check(ft.FT_Stroker_ParseOutline(self._ftobj, outline._ftobj, int(opened)))
     #end parse_outline
 
     # TODO: FT_Stroker_BeginSubPath, FT_Stroker_EndSubPath,
@@ -2564,7 +2564,7 @@ class Stroker :
         anum_contours = ct.c_int()
         check(ft.FT_Stroker_GetBorderCounts
           (
-            self.ftobj,
+            self._ftobj,
             border,
             ct.byref(anum_points),
             ct.byref(anum_contours)
@@ -2584,7 +2584,7 @@ class Stroker :
         check(ft.FT_Outline_New(self._lib().lib, nr_points, nr_contours, temp))
         temp.contents.n_points = 0
         temp.contents.n_contours = 0
-        ft.FT_Stroker_ExportBorder(self.ftobj, border, temp)
+        ft.FT_Stroker_ExportBorder(self._ftobj, border, temp)
         outline._append(temp)
         check(ft.FT_Outline_Done(self._lib().lib, temp))
     #end export_border
@@ -2595,7 +2595,7 @@ class Stroker :
         anum_contours = ct.c_int()
         check(ft.FT_Stroker_GetCounts
           (
-            self.ftobj,
+            self._ftobj,
             ct.byref(anum_points),
             ct.byref(anum_contours)
           ))
@@ -2614,7 +2614,7 @@ class Stroker :
         check(ft.FT_Outline_New(self._lib().lib, nr_points, nr_contours, temp))
         temp.contents.n_points = 0
         temp.contents.n_contours = 0
-        ft.FT_Stroker_Export(self.ftobj, temp)
+        ft.FT_Stroker_Export(self._ftobj, temp)
         outline._append(temp)
         check(ft.FT_Outline_Done(self._lib().lib, temp))
     #end export
