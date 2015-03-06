@@ -1074,6 +1074,12 @@ class Vector :
         self.y = y
     #end __init__
 
+    def __getitem__(self, i) :
+        "being able to access elements by index allows a Vector to be cast to a tuple or list."
+        return \
+            (self.x, self.y)[i]
+    #end __getitem__
+
     # conversions to/from FreeType format added below
 
     def __repr__(self) :
