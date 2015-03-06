@@ -2030,9 +2030,6 @@ class Outline :
         check(ft.FT_Outline_Render(lib.lib, self._ftobj, ct.byref(params)))
     #end render
 
-    # TODO: do I need more direct access to FT_Outline_Decompose?
-    # Or is draw method (below) sufficient?
-
     # end of wrappers for outline-processing functions
 
     @property
@@ -2064,67 +2061,108 @@ class Outline :
             tuple(result)
     #end contours
 
-    def draw(self, g) :
-        "appends the Outline contours onto the current path being constructed in g, which" \
-        " is expected to be a cairo.Context."
+    def decompose(self, move_to, line_to, conic_to, cubic_to, arg = None) :
+        "decomposes the contours of the outline and calls the specified actions" \
+        " for each segment: move_to(pos, arg), line_to(pos, arg), conic_to(pos1, pos2, arg)" \
+        " and cubic_to(pos1, pos2, pos3, arg), where the posn args are Vectors, and the" \
+        " meaning of arg is up to you. Each action must return a status, 0 for success." \
+        " If conic_to is None, then cubic_to will be called for conic segments with" \
+        " control points suitably calculated to produce the right quadratic curve."
 
         pos0 = None
         from_ft = Vector.from_ft_f26_6
 
-        def move_to(pos, _) :
-            nonlocal pos0
+        def wrap_move_to(pos, _) :
             pos = from_ft(pos.contents)
-            pos0 = pos
+            if conic_to == None :
+                nonlocal pos0
+                pos0 = pos
+            #end if
+            return \
+                move_to(pos, arg)
+        #end wrap_move_to
+
+        def wrap_line_to(pos, _) :
+            pos = from_ft(pos.contents)
+            if conic_to == None :
+                nonlocal pos0
+                pos0 = pos
+            #end if
+            return \
+                line_to(pos, arg)
+        #end wrap_line_to
+
+        def wrap_conic_to(qpos1, qpos2, _) :
+            if conic_to != None :
+                pos1 = from_ft(qpos1.contents)
+                pos2 = from_ft(qpos2.contents)
+                result = conic_to(pos1, pos2, arg)
+            else :
+                nonlocal pos0
+                midpos = from_ft(qpos1.contents)
+                pos3 = from_ft(qpos2.contents)
+                # quadratic-to-cubic conversion taken from
+                # <http://stackoverflow.com/questions/3162645/convert-a-quadratic-bezier-to-a-cubic>
+                pos1 = pos0 + 2 * (midpos - pos0) / 3
+                pos2 = pos3 + 2 * (midpos - pos3) / 3
+                result = cubic_to(pos1, pos2, pos3, arg)
+                pos0 = pos2
+            #end if
+            return \
+                result
+        #end wrap_conic_to
+
+        def wrap_cubic_to(pos1, pos2, pos3, _) :
+            pos1 = from_ft(pos1.contents)
+            pos2 = from_ft(pos2.contents)
+            pos3 = from_ft(pos3.contents)
+            return \
+                cubic_to(pos1, pos2, pos3, arg)
+        #end wrap_cubic_to
+
+    #begin decompose
+        funcs = FT.Outline_Funcs \
+          (
+            move_to = FT.Outline_MoveToFunc(wrap_move_to),
+            line_to = FT.Outline_LineToFunc(wrap_line_to),
+            conic_to = FT.Outline_ConicToFunc(wrap_conic_to),
+            cubic_to = FT.Outline_CubicToFunc(wrap_cubic_to),
+            shift = 0,
+            delta = 0,
+          )
+        check(ft.FT_Outline_Decompose(self._ftobj, ct.byref(funcs), ct.c_void_p(0)))
+    #end decompose
+
+    def draw(self, g) :
+        "appends the Outline contours onto the current path being constructed in g, which" \
+        " is expected to be a cairo.Context."
+
+        def move_to(pos, _) :
             g.move_to(pos.x, pos.y)
             return \
                 0
         #end move_to
 
         def line_to(pos, _) :
-            nonlocal pos0
-            pos = from_ft(pos.contents)
-            pos0 = pos
             g.line_to(pos.x, pos.y)
             return \
                 0
         #end line_to
 
-        def conic_to(qpos1, qpos2, _) :
-            nonlocal pos0
-            midpos = from_ft(qpos1.contents)
-            pos3 = from_ft(qpos2.contents)
-            # quadratic-to-cubic conversion taken from
-            # <http://stackoverflow.com/questions/3162645/convert-a-quadratic-bezier-to-a-cubic>
-            pos1 = pos0 + 2 * (midpos - pos0) / 3
-            pos2 = pos3 + 2 * (midpos - pos3) / 3
+        def curve_to(pos1, pos2, pos3, _) :
             g.curve_to(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y)
-            pos0 = pos3
             return \
                 0
-        #end conic_to
-
-        def cubic_to(pos1, pos2, pos3, _) :
-            nonlocal pos0
-            pos1 = from_ft(pos1.contents)
-            pos2 = from_ft(pos2.contents)
-            pos3 = from_ft(pos3.contents)
-            g.curve_to(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y)
-            pos0 = pos3
-            return \
-                0
-        #end cubic_to
+        #end curve_to
 
     #begin draw
-        funcs = FT.Outline_Funcs \
+        self.decompose \
           (
-            move_to = FT.Outline_MoveToFunc(move_to),
-            line_to = FT.Outline_LineToFunc(line_to),
-            conic_to = FT.Outline_ConicToFunc(conic_to),
-            cubic_to = FT.Outline_CubicToFunc(cubic_to),
-            shift = 0,
-            delta = 0,
+            move_to = move_to,
+            line_to = line_to,
+            conic_to = None,
+            cubic_to = curve_to
           )
-        check(ft.FT_Outline_Decompose(self._ftobj, ct.byref(funcs), ct.c_void_p(0)))
     #end draw
 
     def _append(self, that) :
