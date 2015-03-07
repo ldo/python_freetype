@@ -1068,6 +1068,8 @@ deg = 180 / math.pi
 class Vector :
     "Pythonic representation of an FT.Vector, with conversions to/from FreeType form."
 
+    __slots__ = ("x", "y") # to forestall typos
+
     def __init__(self, x, y) :
         "args should be float values."
         self.x = x
@@ -1167,6 +1169,8 @@ ft_convs(Vector, FT.Vector, ("x", "y"))
 
 class Matrix :
     "Pythonic representation of an FT.Matrix, with conversions to/from FreeType form."
+
+    __slots__ = ("xx", "xy", "yx", "yy") # to forestall typos
 
     def __init__(self, xx, xy, yx, yy) :
         "args should be float values."
@@ -1312,6 +1316,8 @@ class BBox :
     "high-level wrapper around an FT.BBox. Coordinates are always stored as floats, but can" \
     " be converted to/from appropriate FreeType scaled fixed-point types."
 
+    __slots__ = ("xMin", "yMin", "xMax", "yMax") # to forestall typos
+
     def __init__(self, xMin, yMin, xMax, yMax) :
         self.xMin = xMin
         self.yMin = yMin
@@ -1332,6 +1338,8 @@ del ft_convs # my work is done
 class Library :
     "Instantiate this to open the FreeType library. Use the new_face or find_face" \
     " methods to open a font file and construct a new Face object."
+
+    __slots__ = ("lib", "__weakref__") # to forestall typos
 
     def __init__(self) :
         self.lib = ct.c_void_p(0)
@@ -1402,6 +1410,14 @@ class Library :
 class Face :
     "represents an FT.Face. Do not instantiate directly; call Library.new_face" \
     " or Library.find_face instead."
+
+    __slots__ = \
+        (
+            "_ftobj", "_lib",
+            "filename", "family_name", "style_name",
+            "num_faces", "face_index", "face_flags", "style_flags", "num_glyphs",
+            "available_sizes", "charmaps",
+        ) # to forestall typos
 
     def __init__(self, lib, face, filename) :
         self._ftobj = face
@@ -1736,6 +1752,8 @@ class GlyphSlot :
     "represents an FT.GlyphSlotRec. Do not instantiate directly;" \
     " call Face.glyph_slots or access via Face.glyph and GlyphSlot.next links instead."
 
+    __slots__ = ("_ftobj",) # to forestall typos
+
     def __init__(self, ftobj) :
         self._ftobj = ftobj
     #end __init__
@@ -1881,6 +1899,8 @@ CURVEPT_OFF3 = 2 # off-curve (cubic Bézier segment)
 class Outline :
     "Pythonic representation of an FT.Outline. Get one of these from" \
     " GlyphSlot.outline or Outline.new()."
+
+    __slots__ = ("_ftobj", "_lib", "owner") # to forestall typos
 
     def __init__(self, ftobj, owner, lib) :
         self._ftobj = ftobj
@@ -2259,6 +2279,8 @@ def_extra_fields \
 class Glyph :
     "Pythonic representation of an FT.Glyph. Get one of these from GlyphSlot.get_glyph."
 
+    __slots__ = ("_ftobj",) # to forestall typos
+
     def __init__(self, ftobj) :
         self._ftobj = ftobj
     #end __init__
@@ -2355,6 +2377,8 @@ class Bitmap :
     " Glyph.bitmap, Outline.get_bitmap() or Bitmap.new_with_array()."
     # Seems there are no public APIs for explicitly allocating storage for one of these;
     # all the publicly-accessible Bitmap objects are owned by their containing structures.
+
+    __slots__ = ("_ftobj", "_lib", "owner", "buffer") # to forestall typos
 
     def __init__(self, ftobj, owner, lib) :
         # lib is not None if I am to manage my own storage under control of FreeType;
@@ -2534,6 +2558,8 @@ def_extra_fields \
 
 class Stroker :
     "representation of a FreeType Stroker. Instantiate this with a Library instance."
+
+    __slots__ = ("_ftobj", "_lib") # to forestall typos
 
     def __init__(self, lib) :
         if not isinstance(lib, Library) :
