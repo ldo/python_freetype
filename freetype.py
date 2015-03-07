@@ -15,7 +15,7 @@ useful. Functionality that is (mostly) covered (as per topics at
 
 in addition to which, a convenience function is supplied to use
 Fontconfig to find matching fonts, and functions are available to
-interface to Pycairo:
+interface to Pycairo, if installed:
 
     * convert a Bitmap to an ImageSurface (requires that your Pycairo
       support ImageSurface.create_for_data)
@@ -36,7 +36,11 @@ import array
 import ctypes as ct
 import struct
 import weakref
-import cairo
+try :
+    import cairo
+except ImportError :
+    cairo = None
+#end try
 
 ft = ct.cdll.LoadLibrary("libfreetype.so.6")
 try :
@@ -2176,6 +2180,9 @@ class Outline :
         #end curve_to
 
     #begin draw
+        if cairo == None :
+            raise NotImplementedError("Pycairo not installed")
+        #end if
         self.decompose \
           (
             move_to = move_to,
@@ -2409,6 +2416,9 @@ class Bitmap :
         "constructs a Bitmap with storage residing in a Python array. The pixel" \
         " format is always PIXEL_MODE_GRAY."
         if pitch == None :
+            if cairo == None :
+                raise NotImplementedError("Pycairo not installed, cannot calculate default pitch")
+            #end if
             pitch = cairo.ImageSurface.format_stride_for_width(cairo.FORMAT_A8, width)
               # simplify conversion to cairo.ImageSurface
         else :
@@ -2498,6 +2508,9 @@ class Bitmap :
 
     def make_image_surface(self, copy = True) :
         "creates a Cairo ImageSurface containing (a copy of) the Bitmap pixels."
+        if cairo == None :
+            raise NotImplementedError("Pycairo not installed")
+        #end if
         if self.pixel_mode == FT.PIXEL_MODE_MONO :
             cairo_format = cairo.FORMAT_A1
         elif self.pixel_mode == FT.PIXEL_MODE_GRAY :
