@@ -17,5 +17,5 @@ distutils.core.setup \
     author = "Lawrence D'Oliveiro",
     author_email = "ldo@geek-central.gen.nz",
     url = "http://github.com/ldo/python_freetype",
-    py_modules = ["freetype"],
+    py_modules = ["freetype2"],
   )

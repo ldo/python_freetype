@@ -48,9 +48,9 @@ Basic Usage
 To initialize FreeType, import the module and create an instance of the
 Library object:
 
-    import freetype
-    FT = freetype.FT # easier access to constants
-    lib = freetype.Library()
+    import freetype2
+    FT = freetype2.FT # easier access to constants
+    lib = freetype2.Library()
 
 You can ask this instance for the version of FreeType on your system:
 
@@ -163,4 +163,4 @@ These objects are automatically converted to the underlying FreeType
 types, with the right scaling, where appropriate.
 
 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
-2015 February 23
+2015 March 11
