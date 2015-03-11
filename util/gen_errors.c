@@ -2,7 +2,7 @@
     This program converts the FreeType error definitions into
     corresponding Python definitions. It only needs to be run
     when there are updates to the former; the output can then
-    be copied and pasted into the appropriate part of freetype.py.
+    be copied and pasted into the appropriate part of freetype2.py.
 
     Copyright 2015 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
     Dual-licensed under the FreeType licence
