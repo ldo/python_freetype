@@ -1060,14 +1060,17 @@ def ft_convs(clas, ft_type, fields) :
     #end for
 #end ft_convs
 
-deg = 180 / math.pi
+deg = math.pi / 180
   # all angles are in radians. You can use the standard Python functions math.degrees
   # and math.radians to convert back and forth, or multiply and divide by this deg
-  # factor: divide by deg to convert degrees to radians, and multiply by deg to convert
+  # factor: multiply by deg to convert degrees to radians, and divide by deg to convert
   # the other way, e.g.
   #
-  #     math.sin(45 / deg)
-  #     math.atan(1) * deg
+  #     math.sin(45 * deg)
+  #     math.atan(1) / deg
+circle = 2 * math.pi
+  # Alternatively, you can work in units of full circles. E.g.
+  # 0.25 * circle is equivalent to 90°
 
 class Vector :
     "Pythonic representation of an FT.Vector, with conversions to/from FreeType form."
