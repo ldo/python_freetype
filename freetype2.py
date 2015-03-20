@@ -2457,7 +2457,7 @@ class Bitmap :
             result
     #end new_with_array
 
-    def copy_with_array(self) :
+    def copy_with_array(self, pitch = None) :
         "returns a new Bitmap which is a copy of this one, with storage residing in" \
         " a Python array."
         src = self._ftobj.contents
@@ -2476,15 +2476,41 @@ class Bitmap :
         :
             setattr(dst, attr, getattr(src, attr))
         #end for
-        buffer_size = src.rows * src.pitch
-        buffer = array.array("B", b"0" * buffer_size)
+        buffer = self.to_array(pitch)
         dst.buffer = ct.cast(buffer.buffer_info()[0], ct.c_void_p)
-        libc.memcpy(dst.buffer, src.buffer, buffer_size)
         result = Bitmap(ct.pointer(dst), None, None)
         result.buffer = buffer
         return \
             result
     #end copy_with_array
+
+    def to_array(self, pitch = None) :
+        "returns a Python array object containing a copy of the Bitmap pixels."
+        if pitch == None :
+            pitch = self.pitch
+        #end if
+        buffer_size = self.rows * pitch
+        buffer = array.array("B", b"0" * buffer_size)
+        dstaddr = buffer.buffer_info()[0]
+        srcaddr = ct.cast(self._ftobj.contents.buffer, ct.c_void_p).value
+        src_pitch = self.pitch
+        if pitch == src_pitch :
+            libc.memcpy(dstaddr, srcaddr, buffer_size)
+        else :
+            # have to copy a row at a time
+            if src_pitch < 0 or pitch < 0 :
+                raise NotImplementedError("can’t cope with negative bitmap pitch")
+            #end if
+            assert pitch > src_pitch
+            for i in range(0, self.rows) :
+                libc.memcpy(dstaddr, srcaddr, src_pitch)
+                dstaddr += pitch
+                srcaddr += src_pitch
+            #end for
+        #end if
+        return \
+            buffer
+    #end to_array
 
     # wrappers for FT.Bitmap functions
     # <http://www.freetype.org/freetype2/docs/reference/ft2-bitmap_handling.html>
@@ -2537,28 +2563,11 @@ class Bitmap :
             raise NotImplementedError("unsupported bitmap format %d" % self.pixel_mode)
         #end if
         src_pitch = self.pitch
-        if src_pitch < 0 :
-            raise NotImplementedError("can’t cope with negative bitmap pitch")
-        #end if
         dst_pitch = cairo.ImageSurface.format_stride_for_width(cairo_format, self.width)
         if not copy and dst_pitch == src_pitch and self.buffer != None :
             pixels = self.buffer
         else :
-            buffer_size = self.rows * dst_pitch
-            pixels = array.array("B", b"0" * buffer_size)
-            dst = pixels.buffer_info()[0]
-            src = ct.cast(self._ftobj.contents.buffer, ct.c_void_p).value
-            if dst_pitch == src_pitch :
-                libc.memcpy(dst, src, buffer_size)
-            else :
-                # have to copy a row at a time
-                assert dst_pitch > src_pitch
-                for i in range(0, self.rows) :
-                    libc.memcpy(dst, src, src_pitch)
-                    dst += dst_pitch
-                    src += src_pitch
-                #end for
-            #end if
+            pixels = self.to_array(dst_pitch)
         #end if
         return \
             cairo.ImageSurface.create_for_data \
