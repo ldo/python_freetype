@@ -861,6 +861,10 @@ class Error :
 ft.FT_Init_FreeType.restype = FT.Error
 ft.FT_New_Face.restype = FT.Error
 # ft.FT_New_face.argtypes = (FT.Library?, ct.c_char_p, ct.c_int, ct.POINTER(FT.Face))
+ft.FT_Reference_Face.restype = FT.Error
+ft.FT_Reference_Face.argtypes = (FT.Face,)
+ft.FT_Done_Face.restype = FT.Error
+ft.FT_Done_Face.argtypes = (FT.Face,)
 ft.FT_Select_Charmap.argtypes = (FT.Face, FT.Encoding)
 ft.FT_Select_Charmap.restype = FT.Error
 ft.FT_Set_Charmap.argtypes = (FT.Face, FT.CharMap)
