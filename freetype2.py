@@ -6,6 +6,7 @@ useful. Functionality that is (mostly) covered (as per topics at
 
     * base interface
     * glyph management
+    * multiple masters
     * computations
     * outline processing
     * quick retrieval of advance values
@@ -150,6 +151,7 @@ class FT :
 
     Pos = ct.c_long # might be integer, or 16.16 fixed, or 26.6 fixed
     Fixed = ct.c_ulong # 16.16 fixed-point
+    Fixed_ptr = ct.POINTER(Fixed)
 
     class Vector(ct.Structure) :
         pass
@@ -576,6 +578,63 @@ class FT :
         ]
     #end Outline_Funcs
 
+    class MM_Axis(ct.Structure) :
+        _fields_ = \
+            [
+                ("name", ct.c_char_p),
+                ("minimum", ct.c_long),
+                ("maximum", ct.c_long),
+            ]
+    #end MM_Axis
+
+    T1_MAX_MM_AXIS = 16
+    class Multi_Master(ct.Structure) :
+        pass
+    Multi_Master._fields_ = \
+        [
+            ("num_axis", ct.c_uint),
+            ("num_designs", ct.c_uint), # normally 2 * T1_MAX_MM_AXIS
+            ("axis", T1_MAX_MM_AXIS * MM_Axis),
+        ]
+    #end Multi_Master
+
+    class Var_Axis(ct.Structure) :
+        pass
+    Var_Axis._fields_ = \
+        [
+            ("name", ct.c_char_p),
+            ("minimum", Fixed),
+            ("default", Fixed), # actually “def” in libfreetype
+            ("maximum", Fixed),
+            ("tag", ct.c_ulong),
+            ("strid", ct.c_uint),
+        ]
+    #end Var_Axis
+    Var_Axis_ptr = ct.POINTER(Var_Axis)
+
+    class Var_Named_Style(ct.Structure) :
+        pass
+    Var_Named_Style._fields_ = \
+        [
+            ("coords", Fixed_ptr), # pointer to array with one entry per axis
+            ("strid", ct.c_uint), # ID of name for style
+        ]
+    #end Var_Named_Style
+    Var_Named_Style_ptr = ct.POINTER(Var_Named_Style)
+
+    class MM_Var(ct.Structure) :
+        pass
+    MM_Var._fields_ = \
+        [
+            ("num_axis", ct.c_uint),
+            ("num_designs", ct.c_uint), # not meaningful for GX
+            ("num_namedstyles", ct.c_int), # should be c_uint, but I can get -1 if invalid
+            ("axis", Var_Axis_ptr), # array of axis descriptors
+            ("namedstyle", Var_Named_Style_ptr), # array of named styles
+        ]
+    #end MM_Var
+    MM_Var_ptr = ct.POINTER(MM_Var)
+
     Orientation = ct.c_uint
     ORIENTATION_TRUETYPE = 0
     ORIENTATION_POSTSCRIPT = 1
@@ -876,6 +935,12 @@ ft.FT_Get_Next_Char.restype = ct.c_ulong
 ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
 ft.FT_Get_Postscript_Name.restype = ct.c_char_p
 ft.FT_Get_FSType_Flags.restype = ct.c_ushort
+ft.FT_Get_Multi_Master.argtypes = (FT.Face, ct.c_void_p)
+ft.FT_Get_MM_Var.argtypes = (FT.Face, ct.c_void_p)
+ft.FT_Set_MM_Design_Coordinates.argtypes = (FT.Face, ct.c_uint, ct.c_void_p)
+ft.FT_Set_Var_Design_Coordinates.argtypes = (FT.Face, ct.c_uint, ct.c_void_p)
+ft.FT_Set_MM_Blend_Coordinates.argtypes = (FT.Face, ct.c_uint, ct.c_void_p)
+ft.FT_Set_Var_Blend_Coordinates.argtypes = (FT.Face, ct.c_uint, ct.c_void_p)
 
 if fc != None :
     fc.FcInit.restype = ct.c_bool
@@ -969,15 +1034,23 @@ def make_fixed_conv(shift) :
 to_f26_6, from_f26_6 = make_fixed_conv(6)
 to_f16_16, from_f16_16 = make_fixed_conv(16)
 
-from_tag = lambda x : struct.pack(">I", x).decode("ascii")
-from_tag.__name__ = "from_tag"
-from_tag.__doc__ = "converts an integer tag code to more comprehensible four-character form."
+def from_tag(x) :
+    "converts an integer tag code to more comprehensible four-character form."
+    try :
+        result = struct.pack(">I", x).decode("ascii")
+    except UnicodeDecodeError :
+        result = x
+    #end try
+    return \
+        result
+#end from_tag
 
 class FTException(Exception) :
     "just to identify a FreeType-specific error exception."
 
     def __init__(self, code) :
         self.args = (("FreeType error %d -- %s" % (code, Error.Message.get(code, "?"))),)
+        self.code = code
     #end __init__
 
 #end FTException
@@ -1731,6 +1804,160 @@ class Face :
         return \
             ft.FT_Get_FSType_Flags(self._ftobj)
     #end fstype_flags
+
+    # Multiple Masters
+    # <http://www.freetype.org/freetype2/docs/reference/ft2-multiple_masters.html>
+    # Beware that Cairo will not expect you to be changing font parameters in this way.
+    # To get around this, you will need to load a new copy of the FT_Face each time
+    # you want to set different design coordinates, so Cairo will think they are
+    # different fonts. Do not change the design coordinates after you have passed
+    # the FT_Face to Cairo.
+
+    @property
+    def multi_master(self) :
+        "returns the Multi_Master descriptor for the font, or None if it doesn’t have one."
+        data = FT.Multi_Master()
+        try :
+            check(ft.FT_Get_Multi_Master(self._ftobj, ct.byref(data)))
+        except FTException as fail :
+            if fail.code == Error.Invalid_Argument :
+                data = None
+            else :
+                raise
+            #end if
+        #end try
+        if data != None :
+            result = \
+                struct_to_dict \
+                  (
+                    item = data,
+                    itemtype = FT.Multi_Master,
+                    indirect = False,
+                    extra_decode =
+                        {
+                            "axis" :
+                                lambda x :
+                                    list
+                                      (
+                                        struct_to_dict
+                                          (
+                                            item = f,
+                                            itemtype = FT.MM_Axis,
+                                            indirect = False,
+                                            extra_decode =
+                                                {
+                                                    "name" :
+                                                        lambda s :
+                                                            s.decode("utf-8") if s != None else None
+                                                }
+                                          )
+                                        for i in range(FT.T1_MAX_MM_AXIS)
+                                        for f in (x[i],)
+                                      ),
+                        }
+                  )
+        else :
+            result = None
+        #end if
+        return \
+            result
+    #end multi_master
+
+    @property
+    def mm_var(self) :
+        "returns the TrueType GX variant information."
+        data = FT.MM_Var_ptr()
+        try :
+            check(ft.FT_Get_MM_Var(self._ftobj, ct.byref(data)))
+        except FTException as fail :
+            if fail.code == Error.Invalid_Argument :
+                data = None
+            else :
+                raise
+            #end if
+        #end try
+        if data != None :
+            # watch out for FreeType bug: FT_Get_MM_Var can return
+            # nonsensical info for Type 1 Multiple Masters
+            num_namedstyles = data.contents.num_namedstyles
+            result = \
+                {
+                    "axis" : list
+                        (
+                            struct_to_dict
+                              (
+                                item = data.contents.axis[i],
+                                itemtype = FT.Var_Axis,
+                                indirect = False,
+                                extra_decode =
+                                    {
+                                        "minimum" : from_f16_16,
+                                        "default" : from_f16_16,
+                                        "maximum" : from_f16_16,
+                                        "name" :
+                                            lambda s : s.decode("utf-8") if s != None else None,
+                                        "tag" : from_tag,
+                                    }
+                              )
+                            for i in range(data.contents.num_axis)
+                        ),
+                     # "num_designs" not meaningful for GX
+                    "namedstyle" : list
+                        (
+                            struct_to_dict
+                              (
+                                item = data.contents.namedstyle[i],
+                                itemtype = FT.Var_Named_Style,
+                                indirect = False,
+                                extra_decode =
+                                    {
+                                        "coords" :
+                                            lambda x :
+                                                list
+                                                    (
+                                                        from_f16_16(x[i])
+                                                        for i in range(num_namedstyles)
+                                                    ),
+                                    }
+                              )
+                            for i in range(data.contents.num_namedstyles)
+                        ),
+                }
+            libc.free(ct.cast(data, ct.c_void_p))
+        else :
+            result = None
+        #end if
+        return \
+            result
+    #end mm_var
+
+    def set_mm_design_coordinates(self, coords) :
+        "sets the design coordinates for a Multiple Master font."
+        num_coords = len(coords)
+        c_coords = (num_coords * ct.c_ulong)(*coords)
+        check(ft.FT_Set_MM_Design_Coordinates(self._ftobj, num_coords, ct.byref(c_coords)))
+    #end set_mm_design_coordinates
+
+    def set_var_design_coordinates(self, coords) :
+        "sets the design coordinates for a TrueType GX font."
+        num_coords = len(coords)
+        c_coords = (num_coords * FT.Fixed)(*tuple(to_f16_16(c) for c in coords))
+        check(ft.FT_Set_Var_Design_Coordinates(self._ftobj, num_coords, ct.byref(c_coords)))
+    #end set_var_design_coordinates
+
+    def set_mm_blend_coordinates(self, coords) :
+        "sets the blend coordinates for a Multiple Master font."
+        num_coords = len(coords)
+        c_coords = (num_coords * FT.Fixed)(*tuple(to_f16_16(c) for c in coords))
+        check(ft.FT_Set_MM_Blend_Coordinates(self._ftobj, num_coords, ct.byref(c_coords)))
+    #end set_mm_blend_coordinates
+
+    def set_var_blend_coordinates(self, coords) :
+        "sets the blend coordinates for a TrueType GX font."
+        num_coords = len(coords)
+        c_coords = (num_coords * FT.Fixed)(*tuple(to_f16_16(c) for c in coords))
+        check(ft.FT_Set_Var_Blend_Coordinates(self._ftobj, num_coords, ct.byref(c_coords)))
+    #end set_var_blend_coordinates
 
 #end Face
 def_extra_fields \
