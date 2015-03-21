@@ -17,7 +17,7 @@ names: thus, the FreeType call “FT_Outline_Transform” is wrapped by a
 method simply called “transform”, defined on Outline objects.
 
 FreeType API constants are currently defined within a class
-called freetype.FT. This also contains lower-level ctypes-based
+called freetype2.FT. This also contains lower-level ctypes-based
 definitions for encoding and decoding FreeType API structures.
 You will need to use the constants, but you can ignore the lower-level
 ctypes structures. The constants are defined with the “FT_” prefix omitted,
@@ -25,8 +25,8 @@ since they are already inside a namespace called “FT”.
 
 This library also provides convenience routines for interoperating
 with [Pycairo](http://cairographics.org/documentation/pycairo/3/): you
-can create a cairo.ImageSurface from a freetype.Bitmap, and you can
-construct a cairo.Path from a freetype.Outline.
+can create a cairo.ImageSurface from a freetype2.Bitmap, and you can
+construct a cairo.Path from a freetype2.Outline.
 
 If Fontconfig is available, you can also load a font by matching
 a Fontconfig pattern.
@@ -163,4 +163,4 @@ These objects are automatically converted to the underlying FreeType
 types, with the right scaling, where appropriate.
 
 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
-2015 March 11
+2015 March 21
