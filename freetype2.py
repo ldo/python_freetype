@@ -250,8 +250,10 @@ class FT :
     # from <https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6cmap.html>
     PLATFORM_UNICODE = 0
     PLATFORM_MACINTOSH = 1
+    PLATFORM_ISO = 2 # deprecated
     PLATFORM_MICROSOFT = 3
-    PLATFORM_ADOBE = 7 # guess
+    PLATFORM_CUSTOM = 4 # app-specific use
+    PLATFORM_ADOBE = 7
     # CharMapRec.encoding_id values for PLATFORM_UNICODE
     ENCODING_UNICODE_DEFAULT = 0
     ENCODING_UNICODE_11 = 1 # Unicode 1.1
