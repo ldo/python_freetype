@@ -7,6 +7,7 @@ useful. Functionality that is (mostly) covered (as per topics at
     * base interface
     * glyph management
     * multiple masters
+    * TrueType tables (partial)
     * computations
     * outline processing
     * quick retrieval of advance values
@@ -635,6 +636,18 @@ class FT :
     #end MM_Var
     MM_Var_ptr = ct.POINTER(MM_Var)
 
+    # FT_Sfnt_Tag enum
+    SFNT_HEAD = 0
+    SFNT_MAXP = 1
+    SFNT_OS2 = 2
+    SFNT_HHEA = 3
+    SFNT_VHEA = 4
+    SFNT_POST = 5
+    SFNT_PCLT = 6
+
+    # TODO: TrueType table structs
+    # <http://freetype.org/freetype2/docs/reference/ft2-truetype_tables.html>
+
     Orientation = ct.c_uint
     ORIENTATION_TRUETYPE = 0
     ORIENTATION_POSTSCRIPT = 1
@@ -941,6 +954,10 @@ ft.FT_Set_MM_Design_Coordinates.argtypes = (FT.Face, ct.c_uint, ct.c_void_p)
 ft.FT_Set_Var_Design_Coordinates.argtypes = (FT.Face, ct.c_uint, ct.c_void_p)
 ft.FT_Set_MM_Blend_Coordinates.argtypes = (FT.Face, ct.c_uint, ct.c_void_p)
 ft.FT_Set_Var_Blend_Coordinates.argtypes = (FT.Face, ct.c_uint, ct.c_void_p)
+ft.FT_Get_Sfnt_Table.restype = ct.c_void_p
+ft.FT_Get_Sfnt_Table.argtypes = (FT.Face, ct.c_uint)
+ft.FT_Load_Sfnt_Table.argtypes = (FT.Face, ct.c_ulong, ct.c_long, ct.c_void_p, ct.c_void_p)
+ft.FT_Sfnt_Table_Info.argtypes = (FT.Face, ct.c_uint, ct.c_void_p, ct.c_void_p)
 
 if fc != None :
     fc.FcInit.restype = ct.c_bool
@@ -1958,6 +1975,72 @@ class Face :
         c_coords = (num_coords * FT.Fixed)(*tuple(to_f16_16(c) for c in coords))
         check(ft.FT_Set_Var_Blend_Coordinates(self._ftobj, num_coords, ct.byref(c_coords)))
     #end set_var_blend_coordinates
+
+    # TrueType tables <http://freetype.org/freetype2/docs/reference/ft2-truetype_tables.html>
+
+    def get_sfnt_table(self, tagenum) :
+        "returns the address of the sfnt table identified by SFNT_xxx code, or None if it" \
+        " does not exist. Note this pointer belongs to the Face and will disappear with it."
+        return \
+            ft.FT_Get_Sfnt_Table(self._ftobj, tagenum)
+    #end get_sfnt_table
+
+    def load_sfnt_table(self, tag, offset = 0, length = None) :
+        "returns the (specified part of the) contents of the sfnt table with the given" \
+        " tag, as a Python array object."
+        c_length = ct.c_ulong()
+        while True :
+            if length != None :
+                assert offset <= length
+                buffer = array.array("B", (0,) * (length - offset))
+                bufadr = buffer.buffer_info()[0]
+                c_length.value = length
+            else :
+                bufadr = None
+                c_length.value = 0
+            #end if
+            check(ft.FT_Load_Sfnt_Table(self._ftobj, FT.ENC_TAG(tag), offset, bufadr, ct.byref(c_length)))
+            if length != None :
+                break
+            length = c_length.value
+        #end while
+        return \
+            buffer
+    #end load_sfnt_table
+
+    def sfnt_table_info(self, index) :
+        "returns a (tag, length) tuple for the sfnt table with the specified index" \
+        " in the sfnt file."
+        tag = ct.c_ulong()
+        length = ct.c_ulong()
+        check(ft.FT_Sfnt_Table_Info(self._ftobj, index, ct.byref(tag), ct.byref(length)))
+        return \
+            (from_tag(tag.value), length.value)
+    #end sfnt_table_info
+
+    @property
+    def all_sfnt_table_info(self) :
+        "returns a list of (tag, length) tuples for all the sfnt tables in the font."
+        result = []
+        index = 0
+        while True :
+            try :
+                item = self.sfnt_table_info(index)
+            except FTException as err :
+                if err.code in (Error.Invalid_Face_Handle, Error.Table_Missing) :
+                    # Table_Missing if I run off the end, Invalid_Face_Handle if
+                    # it wasn't an sfnt in the first place
+                    break
+                raise
+            #end try
+            result.append(item)
+            index += 1
+        #end while
+        return \
+            result
+    #end all_sfnt_table_info
+
+    # TODO: Type 1 tables <http://freetype.org/freetype2/docs/reference/ft2-type1_tables.html>
 
 #end Face
 def_extra_fields \
