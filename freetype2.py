@@ -2419,7 +2419,7 @@ class Outline :
             tuple(result)
     #end contours
 
-    def decompose(self, move_to, line_to, conic_to, cubic_to, arg = None) :
+    def decompose(self, move_to, line_to, conic_to, cubic_to, arg = None, shift = 0, delta = 0) :
         "decomposes the contours of the outline and calls the specified actions" \
         " for each segment: move_to(pos, arg), line_to(pos, arg), conic_to(pos1, pos2, arg)" \
         " and cubic_to(pos1, pos2, pos3, arg), where the posn args are Vectors, and the" \
@@ -2485,8 +2485,8 @@ class Outline :
             line_to = FT.Outline_LineToFunc(wrap_line_to),
             conic_to = FT.Outline_ConicToFunc(wrap_conic_to),
             cubic_to = FT.Outline_CubicToFunc(wrap_cubic_to),
-            shift = 0,
-            delta = 0,
+            shift = shift,
+            delta = delta,
           )
         check(ft.FT_Outline_Decompose(self._ftobj, ct.byref(funcs), ct.c_void_p(0)))
     #end decompose
