@@ -2535,6 +2535,7 @@ class Outline :
 
     def _append(self, that) :
         # appends the contours from FT.Outline that onto this one, extending the arrays appropriately.
+        assert self._lib() != None, "parent Library has gone"
         this_nr_contours = self._ftobj.contents.n_contours
         this_nr_points = self._ftobj.contents.n_points
         that_nr_contours = that.contents.n_contours
