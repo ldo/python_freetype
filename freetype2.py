@@ -1453,6 +1453,13 @@ ft_convs(BBox, FT.BBox, ("xMin", "yMin", "xMax", "yMax"))
 
 del ft_convs # my work is done
 
+#+
+# Note on need for weakrefs: some objects belong to a Library, but disposal
+# calls do not require an explicit reference to that Library. In this case
+# I keep a weakref to the Library as a check whether it has gone away or not.
+# Otherwise, __del__ methods are liable to segfault at script termination time.
+#-
+
 class Library :
     "Instantiate this to open the FreeType library. Use the new_face or find_face" \
     " methods to open a font file and construct a new Face object."
