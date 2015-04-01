@@ -733,6 +733,11 @@ class FT :
             ("raster_done", Raster_DoneFunc),
         ]
 
+    # codes for FT_TrueTypeEngineType
+    TRUETYPE_ENGINE_TYPE_NONE = 0
+    TRUETYPE_ENGINE_TYPE_UNPATENTED = 1
+    TRUETYPE_ENGINE_TYPE_PATENTED = 2
+
 #end FT
 
 class Error :
@@ -958,6 +963,7 @@ ft.FT_Get_Sfnt_Table.restype = ct.c_void_p
 ft.FT_Get_Sfnt_Table.argtypes = (FT.Face, ct.c_uint)
 ft.FT_Load_Sfnt_Table.argtypes = (FT.Face, ct.c_ulong, ct.c_long, ct.c_void_p, ct.c_void_p)
 ft.FT_Sfnt_Table_Info.argtypes = (FT.Face, ct.c_uint, ct.c_void_p, ct.c_void_p)
+ft.FT_Get_TrueType_Engine_Type.argtypes = (ct.c_void_p,)
 
 if fc != None :
     fc.FcInit.restype = ct.c_bool
@@ -1529,6 +1535,13 @@ class Library :
         return \
             self.new_face(found_filename, face_index)
     #end find_face
+
+    @property
+    def truetype_engine_type(self) :
+        "returns the TRUETYPE_ENGINE_TYPE_xxx code."
+        return \
+            ft.FT_Get_TrueType_Engine_Type(self.lib)
+    #end truetype_engine_type
 
 #end Library
 
