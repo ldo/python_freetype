@@ -94,6 +94,7 @@ class FT :
     # variable, and pass the value of the variable instead.
 
     Error = ct.c_int # hopefully this is always correct
+    c_ubyte_ptr = ct.POINTER(ct.c_ubyte)
 
     class LibraryRec(ct.Structure) :
         pass # private
@@ -298,7 +299,7 @@ class FT :
                 ("n_points", ct.c_short), # number of points in the glyph
 
                 ("points", ct.POINTER(Vector)), # the outline's points
-                ("tags", ct.POINTER(ct.c_ubyte)), # the points flags
+                ("tags", c_ubyte_ptr), # the points flags
                 ("contours", ct.POINTER(ct.c_short)), # the contour end points
 
                 ("flags", ct.c_uint), # outline masks
@@ -655,6 +656,19 @@ class FT :
     # TODO: TrueType table structs
     # <http://freetype.org/freetype2/docs/reference/ft2-truetype_tables.html>
 
+    class SfntName(ct.Structure) :
+        pass
+    SfntName._fields_ = \
+        [
+            ("platform_id", ct.c_ushort),
+            ("encoding_id", ct.c_ushort),
+            ("language_id", ct.c_ushort),
+            ("name_id",  ct.c_ushort),
+            ("string", c_ubyte_ptr), # *not* null-terminated
+            ("string_len", ct.c_uint),
+        ]
+    #end SfntName
+
     Orientation = ct.c_uint
     ORIENTATION_TRUETYPE = 0
     ORIENTATION_POSTSCRIPT = 1
@@ -723,7 +737,7 @@ class FT :
 
     Raster_NewFunc = ct.CFUNCTYPE(ct.c_int, ct.c_void_p, Raster)
     Raster_DoneFunc = ct.CFUNCTYPE(None, Raster)
-    Raster_ResetFunc = ct.CFUNCTYPE(None, Raster, ct.POINTER(ct.c_ubyte), ct.c_ulong)
+    Raster_ResetFunc = ct.CFUNCTYPE(None, Raster, c_ubyte_ptr, ct.c_ulong)
     Raster_SetModeFunc = ct.CFUNCTYPE(ct.c_int, Raster, ct.c_ulong, ct.c_void_p)
     Raster_RenderFunc = ct.CFUNCTYPE(ct.c_int, Raster, Raster_ParamsPtr)
 
@@ -958,6 +972,8 @@ ft.FT_Set_Charmap.restype = FT.Error
 ft.FT_Get_First_Char.restype = ct.c_ulong
 ft.FT_Get_Next_Char.restype = ct.c_ulong
 ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
+ft.FT_Get_Sfnt_Name_Count.argtypes = (ct.c_void_p,)
+ft.FT_Get_Sfnt_Name.argtypes = (ct.c_void_p, ct.c_uint, ct.c_void_p)
 ft.FT_Get_Gasp.argtypes = (ct.c_void_p, ct.c_uint)
 ft.FT_Get_Postscript_Name.restype = ct.c_char_p
 ft.FT_Get_FSType_Flags.restype = ct.c_ushort
@@ -2069,6 +2085,35 @@ class Face :
     #end all_sfnt_table_info
 
     # TODO: Type 1 tables <http://freetype.org/freetype2/docs/reference/ft2-type1_tables.html>
+
+    @property
+    def sfnt_name_count(self) :
+        "returns the count of entries in the sfnt name table."
+        return \
+            ft.FT_Get_Sfnt_Name_Count(self._ftobj)
+    #end sfnt_name_count
+
+    def get_sfnt_name(self, index) :
+        "returns the sfnt name table entry with the specified index in [0 .. sfnt_name_count - 1]." \
+        " Note that the string field is returned as undecoded bytes, because its encoding" \
+        " is dependent on the combination of platform_id and encoding_id."
+        temp = FT.SfntName()
+        check(ft.FT_Get_Sfnt_Name(self._ftobj, index, ct.byref(temp)))
+        result = struct_to_dict \
+          (
+            item = temp,
+            itemtype = FT.SfntName,
+            indirect = False,
+            extra_decode =
+                {
+                    "string" : lambda s : bytes(s[:temp.string_len]),
+                }
+          )
+        del result["string_len"]
+        libc.free(temp.string)
+        return \
+            result
+    #end get_sfnt_name
 
     def get_gasp(self, ppem) :
         "returns the “gasp” table entry GASP_xxx flags for the specified ppem, or" \
