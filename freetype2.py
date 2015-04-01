@@ -636,6 +636,13 @@ class FT :
     #end MM_Var
     MM_Var_ptr = ct.POINTER(MM_Var)
 
+    # bits returned by FT_Get_Gasp
+    GASP_NO_TABLE = -1
+    GASP_DO_GRIDFIT = 0x01
+    GASP_DO_GRAY = 0x02
+    GASP_SYMMETRIC_SMOOTHING = 0x08
+    GASP_SYMMETRIC_GRIDFIT = 0x10
+
     # FT_Sfnt_Tag enum
     SFNT_HEAD = 0
     SFNT_MAXP = 1
@@ -951,6 +958,7 @@ ft.FT_Set_Charmap.restype = FT.Error
 ft.FT_Get_First_Char.restype = ct.c_ulong
 ft.FT_Get_Next_Char.restype = ct.c_ulong
 ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
+ft.FT_Get_Gasp.argtypes = (ct.c_void_p, ct.c_uint)
 ft.FT_Get_Postscript_Name.restype = ct.c_char_p
 ft.FT_Get_FSType_Flags.restype = ct.c_ushort
 ft.FT_Get_Multi_Master.argtypes = (FT.Face, ct.c_void_p)
@@ -2061,6 +2069,13 @@ class Face :
     #end all_sfnt_table_info
 
     # TODO: Type 1 tables <http://freetype.org/freetype2/docs/reference/ft2-type1_tables.html>
+
+    def get_gasp(self, ppem) :
+        "returns the “gasp” table entry GASP_xxx flags for the specified ppem, or" \
+        " GASP_NO_TABLE if not found."
+        return \
+            ft.FT_Get_Gasp(self._ftobj, ppem)
+    #end get_gasp
 
 #end Face
 def_extra_fields \
