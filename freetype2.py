@@ -31,8 +31,6 @@ interface to Pycairo, if installed:
 # or later, to be compatible with FreeType itself.
 #-
 
-__all__ = ("death_to_wildcard_imports",)
-
 import math
 from numbers import \
     Number
