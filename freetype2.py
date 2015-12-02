@@ -1235,6 +1235,8 @@ circle = 2 * math.pi
   # Alternatively, you can work in units of full circles. E.g.
   # 0.25 * circle is equivalent to 90°
 
+base_dpi = 90 # for scaling things to different relative resolutions
+
 class Vector :
     "Pythonic representation of an FT.Vector, with conversions to/from FreeType form."
 
