@@ -1647,7 +1647,7 @@ class Face :
             nr_items = getattr(facerec, nr_field)
             elts = getattr(facerec, ptr_field)
             items = []
-            for i in range(0, nr_items) :
+            for i in range(nr_items) :
                 elt = elts[i]
                 if deref :
                     elt = elt.contents
@@ -2501,7 +2501,7 @@ class Outline :
         result = []
         pointindex = 0
         ftobj = self._ftobj.contents
-        for contourindex in range(0, ftobj.n_contours) :
+        for contourindex in range(ftobj.n_contours) :
             contour = []
             endpoint = ftobj.contours[contourindex]
             while True :
@@ -2923,7 +2923,7 @@ class Bitmap :
                 raise NotImplementedError("can’t cope with negative bitmap pitch")
             #end if
             assert pitch > src_pitch
-            for i in range(0, self.rows) :
+            for i in range(self.rows) :
                 libc.memcpy(dstaddr, srcaddr, src_pitch)
                 dstaddr += pitch
                 srcaddr += src_pitch
