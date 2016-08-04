@@ -1080,8 +1080,6 @@ def _ensure_fc() :
     #end if
 #end _ensure_fc
 
-libc.memcpy.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_size_t)
-libc.memcpy.restype = None
 libc.free.argtypes = (ct.c_void_p,)
 
 def make_fixed_conv(shift) :
@@ -2645,37 +2643,37 @@ class Outline :
             this_nr_contours + that_nr_contours,
             result
           ))
-        libc.memcpy \
+        ct.memmove \
           (
             result.contents.points,
             self._ftobj.contents.points,
             this_nr_points * ct.sizeof(FT.Vector)
           )
-        libc.memcpy \
+        ct.memmove \
           (
             ct.cast(result.contents.points, ct.c_void_p).value + this_nr_points * ct.sizeof(FT.Vector),
             that.contents.points,
             that_nr_points * ct.sizeof(FT.Vector)
           )
-        libc.memcpy \
+        ct.memmove \
           (
             result.contents.tags,
             self._ftobj.contents.tags,
             this_nr_points * ct.sizeof(ct.c_ubyte)
           )
-        libc.memcpy \
+        ct.memmove \
           (
             ct.cast(result.contents.tags, ct.c_void_p).value + this_nr_points * ct.sizeof(ct.c_ubyte),
             that.contents.tags,
             that_nr_points * ct.sizeof(ct.c_ubyte)
           )
-        libc.memcpy \
+        ct.memmove \
           (
             result.contents.contours,
             self._ftobj.contents.contours,
             this_nr_contours * ct.sizeof(ct.c_short)
           )
-        libc.memcpy \
+        ct.memmove \
           (
             ct.cast(result.contents.contours, ct.c_void_p).value + this_nr_contours * ct.sizeof(ct.c_short),
             that.contents.contours,
@@ -2916,7 +2914,7 @@ class Bitmap :
         srcaddr = ct.cast(self._ftobj.contents.buffer, ct.c_void_p).value
         src_pitch = self.pitch
         if pitch == src_pitch :
-            libc.memcpy(dstaddr, srcaddr, buffer_size)
+            ct.memmove(dstaddr, srcaddr, buffer_size)
         else :
             # have to copy a row at a time
             if src_pitch < 0 or pitch < 0 :
@@ -2924,7 +2922,7 @@ class Bitmap :
             #end if
             assert pitch > src_pitch
             for i in range(self.rows) :
-                libc.memcpy(dstaddr, srcaddr, src_pitch)
+                ct.memmove(dstaddr, srcaddr, src_pitch)
                 dstaddr += pitch
                 srcaddr += src_pitch
             #end for
