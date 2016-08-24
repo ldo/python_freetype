@@ -33,7 +33,7 @@ interface to Pycairo, if installed:
 
 import math
 from numbers import \
-    Number
+    Real
 import array
 import ctypes as ct
 import struct
@@ -1278,7 +1278,7 @@ class Vector :
     def __mul__(v, f) :
         if isinstance(f, Vector) :
             result = Vector(v.x * f.x, v.y * f.y)
-        elif isinstance(f, Number) :
+        elif isinstance(f, Real) :
             result = Vector(v.x * f, v.y * f)
         else :
             result = NotImplemented
@@ -1291,7 +1291,7 @@ class Vector :
     def __truediv__(v, f) :
         if isinstance(f, Vector) :
             result = Vector(v.x / f.x, v.y / f.y)
-        elif isinstance(f, Number) :
+        elif isinstance(f, Real) :
             result = Vector(v.x / f, v.y / f)
         else :
             result = NotImplemented
