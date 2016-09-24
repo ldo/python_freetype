@@ -653,8 +653,195 @@ class FT :
     SFNT_POST = 5
     SFNT_PCLT = 6
 
-    # TODO: TrueType table structs
+    # TrueType table structs
     # <http://freetype.org/freetype2/docs/reference/ft2-truetype_tables.html>
+
+    class TT_Header(ct.Structure) :
+        pass
+    TT_Header._fields_ = \
+        [
+            ("Table_Version", Fixed),
+            ("Font_Revision", Fixed),
+            ("CheckSum_Adjust", ct.c_int),
+            ("Magic_Number", ct.c_int),
+            ("Flags", ct.c_ushort),
+            ("Units_Per_EM", ct.c_ushort),
+            ("Created", ct.c_int * 2),
+            ("Modified", ct.c_int * 2),
+            ("xMin", ct.c_short),
+            ("yMin", ct.c_short),
+            ("xMax", ct.c_short),
+            ("yMax", ct.c_short),
+            ("Mac_Style", ct.c_ushort),
+            ("Lowest_Rec_PPEM", ct.c_ushort),
+            ("Font_Direction", ct.c_short),
+            ("Index_To_Loc_Format", ct.c_short),
+            ("Glyph_Data_Format", ct.c_short),
+        ]
+    #end TT_Header
+
+    class TT_HoriHeader(ct.Structure) :
+        pass
+    TT_HoriHeader._fields_ = \
+        [
+            ("Version", Fixed),
+            ("Ascender", ct.c_short),
+            ("Descender", ct.c_short),
+            ("Line_Gap", ct.c_short),
+            ("advance_Width_Max", ct.c_ushort),
+            ("min_Left_Side_Bearing", ct.c_short),
+            ("min_Right_Side_Bearing", ct.c_short),
+            ("xMax_Extent", ct.c_short),
+            ("caret_Slope_Rise", ct.c_short),
+            ("caret_Slope_Run", ct.c_short),
+            ("caret_Offset", ct.c_short),
+            ("Reserved", ct.c_short * 4),
+            ("metric_Data_Format", ct.c_short),
+            ("number_Of_HMetrics", ct.c_ushort),
+        # The following fields are not defined by the TrueType specification
+        # but they are used to connect the metrics header to the relevant
+        # `HMTX' table.
+            ("long_metrics", ct.c_void_p),
+            ("short_metrics", ct.c_void_p),
+        ]
+    #end TT_HoriHeader
+
+    class TT_VertHeader(ct.Structure) :
+        pass
+    TT_VertHeader._fields_ = \
+        [
+            ("Version", Fixed),
+            ("Ascender", ct.c_short),
+            ("Descender", ct.c_short),
+            ("Line_Gap", ct.c_short),
+            ("advance_Height_Max", ct.c_ushort),
+            ("min_Top_Side_Bearing", ct.c_short),
+            ("min_Bottom_Side_Bearing", ct.c_short),
+            ("yMax_Extent", ct.c_short),
+            ("caret_Slope_Rise", ct.c_short),
+            ("caret_Slope_Run", ct.c_short),
+            ("caret_Offset", ct.c_short),
+            ("Reserved", ct.c_short * 4),
+            ("metric_Data_Format", ct.c_short),
+            ("number_Of_VMetrics", ct.c_short),
+        # The following fields are not defined by the TrueType specification
+        # but they're used to connect the metrics header to the relevant
+        # `HMTX' or `VMTX' table.
+            ("long_metrics", ct.c_void_p),
+            ("short_metrics", ct.c_void_p),
+        ]
+    #end TT_VertHeader
+
+    class TT_OS2(ct.Structure) :
+        pass
+    TT_OS2._fields_ = \
+        [
+            ("version", ct.c_ushort),
+            ("xAvgCharWidth", ct.c_short),
+            ("usWeightClass", ct.c_ushort),
+            ("usWidthClass", ct.c_ushort),
+            ("fsType", ct.c_ushort),
+            ("ySubscriptXSize", ct.c_short),
+            ("ySubscriptYSize", ct.c_short),
+            ("ySubscriptXOffset", ct.c_short),
+            ("ySubscriptYOffset", ct.c_short),
+            ("ySuperscriptXSize", ct.c_short),
+            ("ySuperscriptYSize", ct.c_short),
+            ("ySuperscriptXOffset", ct.c_short),
+            ("ySuperscriptYOffset", ct.c_short),
+            ("yStrikeoutSize", ct.c_short),
+            ("yStrikeoutPosition", ct.c_short),
+            ("sFamilyClass", ct.c_short),
+            ("panose", ct.c_byte * 10),
+            ("ulUnicodeRange1", ct.c_uint), # Bits 0-31
+            ("ulUnicodeRange2", ct.c_uint), # Bits 32-63
+            ("ulUnicodeRange3", ct.c_uint), # Bits 64-95
+            ("ulUnicodeRange4", ct.c_uint), # Bits 96-127
+            ("achVendID", ct.c_char * 4),
+            ("fsSelection", ct.c_ushort),
+            ("usFirstCharIndex", ct.c_ushort),
+            ("usLastCharIndex", ct.c_ushort),
+            ("sTypoAscender", ct.c_short),
+            ("sTypoDescender", ct.c_short),
+            ("sTypoLineGap", ct.c_short),
+            ("usWinAscent", ct.c_ushort),
+            ("usWinDescent", ct.c_ushort),
+        # only version 1 and higher:
+            ("ulCodePageRange1", ct.c_uint), # Bits 0-31
+            ("ulCodePageRange2", ct.c_uint), # Bits 32-63
+        # only version 2 and higher:
+            ("sxHeight", ct.c_short),
+            ("sCapHeight", ct.c_short),
+            ("usDefaultChar", ct.c_ushort),
+            ("usBreakChar", ct.c_ushort),
+            ("usMaxContext", ct.c_ushort),
+        # only version 5 and higher:
+            ("usLowerOpticalPointSize", ct.c_ushort), # in twips (1/20th points)
+            ("usUpperOpticalPointSize", ct.c_ushort), # in twips (1/20th points)
+        ]
+    #end TT_OS2
+
+    class TT_Postscript(ct.Structure) :
+        pass
+    TT_Postscript._fields_ = \
+        [
+            ("FormatType", Fixed),
+            ("italicAngle", Fixed),
+            ("underlinePosition", ct.c_short),
+            ("underlineThickness", ct.c_short),
+            ("isFixedPitch", ct.c_uint),
+            ("minMemType42", ct.c_uint),
+            ("maxMemType42", ct.c_uint),
+            ("minMemType1", ct.c_uint),
+            ("maxMemType1", ct.c_uint),
+        # Glyph names follow in the file, but we don't
+        # load them by default.  See the ttpost.c file.
+        ]
+    #end TT_Postscript
+
+    class TT_PCLT(ct.Structure) :
+        pass
+    TT_PCLT._fields_ = \
+        [
+            ("Version", Fixed),
+            ("FontNumber", ct.c_uint),
+            ("Pitch", ct.c_ushort),
+            ("xHeight", ct.c_ushort),
+            ("Style", ct.c_ushort),
+            ("TypeFamily", ct.c_ushort),
+            ("CapHeight", ct.c_ushort),
+            ("SymbolSet", ct.c_ushort),
+            ("TypeFace", ct.c_char * 16),
+            ("CharacterComplement", ct.c_char * 8),
+            ("FileName", ct.c_char * 6),
+            ("StrokeWeight", ct.c_char),
+            ("WidthType", ct.c_char),
+            ("SerifStyle", ct.c_byte),
+            ("Reserved", ct.c_byte),
+        ]
+    #end TT_PCLT
+
+    class TT_MaxProfile(ct.Structure) :
+        pass
+    TT_MaxProfile._fields_ = \
+        [
+            ("version", Fixed),
+            ("numGlyphs", ct.c_ushort),
+            ("maxPoints", ct.c_ushort),
+            ("maxContours", ct.c_ushort),
+            ("maxCompositePoints", ct.c_ushort),
+            ("maxCompositeContours", ct.c_ushort),
+            ("maxZones", ct.c_ushort),
+            ("maxTwilightPoints", ct.c_ushort),
+            ("maxStorage", ct.c_ushort),
+            ("maxFunctionDefs", ct.c_ushort),
+            ("maxInstructionDefs", ct.c_ushort),
+            ("maxStackElements", ct.c_ushort),
+            ("maxSizeOfInstructions", ct.c_ushort),
+            ("maxComponentElements", ct.c_ushort),
+            ("maxComponentDepth", ct.c_ushort),
+        ]
+    #end TT_MaxProfile
 
     class SfntName(ct.Structure) :
         pass
@@ -2105,6 +2292,8 @@ class Face :
         return \
             result
     #end all_sfnt_table_info
+
+    # FT_Get_CMap_Language_ID, FT_Get_CMap_Format NYI
 
     # TODO: Type 1 tables <http://freetype.org/freetype2/docs/reference/ft2-type1_tables.html>
 
