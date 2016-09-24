@@ -25,13 +25,13 @@ int main(void)
     fprintf(stdout, "\n    # Error codes:\n");
 #define FT_ERRORDEF_(suffix, code, msg) \
     fprintf(stdout, "    %s = %d\n", #suffix, code);
-#include <freetype2/fterrdef.h>
+#include <freetype/fterrdef.h>
 #undef FT_ERRORDEF_
     fprintf(stdout, "\n    # Mapping from codes to message strings:\n");
     fprintf(stdout, "    Message = \\\n        {\n");
 #define FT_ERRORDEF_(suffix, code, msg) \
     fprintf(stdout, "            %d : %s,\n", code, #msg);
-#include <freetype2/fterrdef.h>
+#include <freetype/fterrdef.h>
 #undef FT_ERRORDEF_
     fprintf(stdout, "        }\n");
     fprintf(stdout, "\n#end Error\n");
