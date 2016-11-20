@@ -1215,6 +1215,7 @@ if fc != None :
     fc.FcPatternDestroy.argtypes = (ct.c_void_p,)
     fc.FcPatternDestroy.restype = None
     fc.FcFreeTypeQueryFace.restype = ct.c_void_p
+    fc.FcFreeTypeQueryFace.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_int, ct.c_void_p)
     fc.FcNameUnparse.argtypes = (ct.c_void_p,)
     fc.FcNameUnparse.restype = ct.c_void_p
 
