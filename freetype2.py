@@ -1702,15 +1702,50 @@ del ft_convs # my work is done
 # Otherwise, __del__ methods are liable to segfault at script termination time.
 #-
 
+default_lib = None
+got_lib_instances = False
+# Note on Library management: either you can instantiate the Library
+# class to create any number of libraries, or, preferably, you can
+# call get_default_lib() (below) to manage a single global Library
+# instance. To avoid confusion, there are cross-checks to ensure the
+# two conventions cannot be mixed.
+
+def get_default_lib() :
+    "returns the global default FreeType Library, automatically" \
+    " creating it if it doesn’t exist."
+    global default_lib, got_lib_instances
+    if default_lib == None :
+        if got_lib_instances :
+            raise RuntimeError("separate Library instances already exist")
+        #end if
+        default_lib = Library()
+    #end if
+    return \
+        default_lib
+#end get_default_lib
+
 class Library :
-    "Instantiate this to open the FreeType library. Use the new_face or find_face" \
-    " methods to open a font file and construct a new Face object."
+    "Instantiate this to open the FreeType library. For most purposes" \
+    " (including compatibility with my other Python API bindings), it is" \
+    " preferable to call get_default_lib() instead, so everybody uses a single" \
+    " common Library instance.\n" \
+    "\n" \
+    "Use the new_face or find_face methods to open a font file and construct" \
+    " a new Face object."
 
     __slots__ = ("lib", "__weakref__") # to forestall typos
 
     def __init__(self) :
-        self.lib = ct.c_void_p(0)
+        global got_lib_instances
+        self.lib = ct.c_void_p(0) # do first for sake of destructor
+        if default_lib != None :
+            raise RuntimeError \
+              (
+                "global default_lib exists: cannot create additional Library instances"
+              )
+        #end if
         check(ft.FT_Init_FreeType(ct.byref(self.lib)))
+        got_lib_instances = True
     #end __init__
 
     def __del__(self) :
