@@ -45,18 +45,20 @@ To install python_freetype on your system, type
 Basic Usage
 ===========
 
-To initialize FreeType, import the module and create an instance of the
-Library object:
+To initialize FreeType, import the module and obtain an instance of the
+Library object. Rather than instantiating the Library class yourself,
+it is preferable to use the global Library instance that the freetype2
+module will automatically create on demand:
 
     import freetype2
     FT = freetype2.FT # easier access to constants
-    lib = freetype2.Library()
+    lib = freetype2.get_default_lib()
 
-You can ask this instance for the version of FreeType on your system:
+You can ask the library for the version of FreeType on your system:
 
     print(lib.version)
 
-which might print something like “(2, 5, 2)”.
+which might print something like “(2, 6, 3)”.
 
 To load a Face from a specific font file, use the library’s new_face
 method, e.g.:
@@ -163,4 +165,4 @@ These objects are automatically converted to the underlying FreeType
 types, with the right scaling, where appropriate.
 
 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
-2015 March 21
+2016 November 27
