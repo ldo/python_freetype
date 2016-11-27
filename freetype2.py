@@ -1817,8 +1817,8 @@ class Library :
 #end Library
 
 class Face :
-    "represents an FT.Face. Do not instantiate directly; call Library.new_face" \
-    " or Library.find_face instead."
+    "represents an FT.Face. Do not instantiate directly; call the new or find" \
+    " methods, or Library.new_face or Library.find_face instead."
 
     __slots__ = \
         (
@@ -1927,6 +1927,21 @@ class Face :
             self._ftobj = None
         #end if
     #end __del__
+
+    @staticmethod
+    def new(filename, face_index = 0) :
+        "loads an FT.Face from a file and returns a Face object for it."
+        return \
+            get_default_lib().new_face(filename, face_index)
+    #end new
+
+    @staticmethod
+    def find(pattern) :
+        "finds a font file by trying to match a Fontconfig pattern string, loads an FT.Face" \
+        " from it and returns a Face object."
+        return \
+            get_default_lib().find_face(pattern)
+    #end find
 
     @property
     def font_format(self) :
