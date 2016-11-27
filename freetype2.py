@@ -1149,7 +1149,7 @@ ft.FT_Done_FreeType.argtypes = (ct.c_void_p,)
 ft.FT_Library_Version.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_void_p, ct.c_void_p)
 ft.FT_New_Face.argtypes = (ct.c_void_p, ct.c_void_p, ct.c_long, ct.c_void_p)
 # ft.FT_New_face.argtypes = (FT.Library?, ct.c_char_p, ct.c_int, ct.POINTER(FT.Face))
-ft.FT_Reference_Face.argtypes = (FT.Face,)
+ft.FT_Reference_Face.argtypes = (ct.c_void_p,)
 ft.FT_Done_Face.argtypes = (ct.c_void_p,)
 ft.FT_Get_X11_Font_Format.restype = ct.c_char_p
 ft.FT_Get_X11_Font_Format.argtypes = (ct.c_void_p,)
@@ -1822,79 +1822,103 @@ class Face :
 
     __slots__ = \
         (
+            "__weakref__",
             "_ftobj", "_lib",
             "filename", "family_name", "style_name",
             "num_faces", "face_index", "face_flags", "style_flags", "num_glyphs",
             "available_sizes", "charmaps",
         ) # to forestall typos
 
-    def __init__(self, lib, face, filename) :
-        self._ftobj = face
-        self._lib = weakref.ref(lib)
-        facerec = ct.cast(self._ftobj, FT.Face).contents
-        self.filename = filename
-        # following attrs don't change, but perhaps it is simpler to define them
-        # via def_extra_fields anyway
-        for \
-            field \
-        in \
-            (
-                "num_faces",
-                "face_index",
-                "face_flags",
-                "style_flags",
-                "num_glyphs",
-            ) \
-        :
-            setattr(self, field, getattr(facerec, field))
-        #end for
-        for \
-            field \
-        in \
-            (
-                "family_name",
-                "style_name",
-            ) \
-        :
-            setattr(self, field, getattr(facerec, field).decode("utf-8"))
-        #end for
-        # end attributes which could go into def_extra_fields call
-        for \
-            nr_field, ptr_field, elt_type, deref, exclude \
-        in \
-            (
-                ("num_fixed_sizes", "available_sizes", FT.Bitmap_Size, False, ()),
-                ("num_charmaps", "charmaps", FT.CharMapRec, True, ("face",)),
-            ) \
-        :
-            nr_items = getattr(facerec, nr_field)
-            elts = getattr(facerec, ptr_field)
-            items = []
-            for i in range(nr_items) :
-                elt = elts[i]
-                if deref :
-                    elt = elt.contents
-                #end if
-                item = {}
-                for k in elt_type._fields_ :
-                    k, t = k
-                    if k not in exclude :
-                        item[k] = getattr(elt, k)
-                        if t is FT.Encoding :
-                            item[k] = from_tag(item[k])
-                        elif t is FT.Pos :
-                            item[k] = from_f26_6(item[k])
-                        #end if
-                    #end if
-                #end for
-                if deref :
-                    item["."] = elts[i]
-                #end if
-                items.append(item)
+    _instances = weakref.WeakValueDictionary()
+      # For mapping of low-level FT_Face references back to Python Face objects.
+      # This module doesn’t (currently) need such functionality directly,
+      # but modules for other libraries built on FreeType may do so.
+
+    def __new__(celf, lib, face, filename) :
+        face = ct.cast(face, ct.c_void_p)
+        self = celf._instances.get(face.value)
+        if self == None :
+            if lib == None :
+                lib = get_default_lib().lib
+            #end if
+            # filename may be None
+            self = super().__new__(celf)
+            self._ftobj = ct.cast(face, FT.Face)
+            self._lib = weakref.ref(lib)
+            facerec = self._ftobj.contents
+            self.filename = filename
+            # following attrs don't change, but perhaps it is simpler to define them
+            # via def_extra_fields anyway
+            for \
+                field \
+            in \
+                (
+                    "num_faces",
+                    "face_index",
+                    "face_flags",
+                    "style_flags",
+                    "num_glyphs",
+                ) \
+            :
+                setattr(self, field, getattr(facerec, field))
             #end for
-            setattr(self, ptr_field, items)
-        #end for
-    #end __init__
+            for \
+                field \
+            in \
+                (
+                    "family_name",
+                    "style_name",
+                ) \
+            :
+                setattr(self, field, getattr(facerec, field).decode("utf-8"))
+            #end for
+            # end attributes which could go into def_extra_fields call
+            for \
+                nr_field, ptr_field, elt_type, deref, exclude \
+            in \
+                (
+                    ("num_fixed_sizes", "available_sizes", FT.Bitmap_Size, False, ()),
+                    ("num_charmaps", "charmaps", FT.CharMapRec, True, ("face",)),
+                ) \
+            :
+                nr_items = getattr(facerec, nr_field)
+                elts = getattr(facerec, ptr_field)
+                items = []
+                for i in range(nr_items) :
+                    elt = elts[i]
+                    if deref :
+                        elt = elt.contents
+                    #end if
+                    item = {}
+                    for k in elt_type._fields_ :
+                        k, t = k
+                        if k not in exclude :
+                            item[k] = getattr(elt, k)
+                            if t is FT.Encoding :
+                                item[k] = from_tag(item[k])
+                            elif t is FT.Pos :
+                                item[k] = from_f26_6(item[k])
+                            #end if
+                        #end if
+                    #end for
+                    if deref :
+                        item["."] = elts[i]
+                    #end if
+                    items.append(item)
+                #end for
+                setattr(self, ptr_field, items)
+            #end for
+            celf._instances[face.value] = self
+        else :
+            assert \
+                (lib == None or self._lib() == lib) and (filename == None or self.filename == filename), \
+                "library/filename mismatch with existing Face instance"
+            # assume caller has not done ft.FT_Reference_Face, so I don’t need
+            # to lose extra reference with ft.FT_Done_Face!
+        #end if
+        return \
+            self
+    #end __new__
 
     def __del__(self) :
         if self._ftobj != None and self._lib() != None :
@@ -1914,9 +1938,21 @@ class Face :
     @property
     def fc_pattern(self) :
         "a Fontconfig pattern string describing this Face."
+        if self.filename == None :
+            raise RuntimeError("cannot form Fontconfig pattern without filename")
+        #end if
         _ensure_fc()
         with _FcPatternManager() as patterns :
-            descr_pattern = patterns.collect(fc.FcFreeTypeQueryFace(self._ftobj, ct.c_char_p(self.filename.encode("utf-8")), self._ftobj.contents.face_index, None))
+            descr_pattern = patterns.collect \
+              (
+                fc.FcFreeTypeQueryFace
+                  (
+                    self._ftobj, # face
+                    ct.c_char_p(self.filename.encode("utf-8")), # file
+                    self._ftobj.contents.face_index, # id
+                    None # blanks
+                  )
+              )
             if descr_pattern == None :
                 raise RuntimeError("cannot construct font name pattern")
             #end if
