@@ -2632,7 +2632,9 @@ class Outline :
     @staticmethod
     def new(lib) :
         "allocates a new Outline object with initially no control points or contours."
-        if not isinstance(lib, Library) :
+        if lib == None :
+            lib = get_default_lib()
+        elif not isinstance(lib, Library) :
             raise TypeError("expecting a Library")
         #end if
         result = ct.pointer(FT.Outline())
@@ -2697,7 +2699,9 @@ class Outline :
 
     def get_bitmap(self, lib, the_bitmap) :
         "renders the Outline into the pre-existing Bitmap."
-        if not isinstance(lib, Library) :
+        if lib == None :
+            lib = get_default_lib()
+        elif not isinstance(lib, Library) :
             raise TypeError("expecting lib to be a Library")
         #end if
         if not isinstance(the_bitmap, Bitmap) :
@@ -2726,7 +2730,9 @@ class Outline :
       ) :
         "renders the Outline to either the target Bitmap or through the gray_spans callback," \
         " depending on flags."
-        if not isinstance(lib, Library) :
+        if lib == None :
+            lib = get_default_lib()
+        elif not isinstance(lib, Library) :
             raise TypeError("expecting lib to be a Library")
         #end if
         if target != None and not isinstance(target, Bitmap) :
@@ -3284,7 +3290,9 @@ class Stroker :
     __slots__ = ("_ftobj", "_lib") # to forestall typos
 
     def __init__(self, lib) :
-        if not isinstance(lib, Library) :
+        if lib == None :
+            lib = get_default_lib()
+        elif not isinstance(lib, Library) :
             raise TypeError("expecting a Library")
         #end if
         self._lib = weakref.ref(lib)
