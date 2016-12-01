@@ -1749,7 +1749,7 @@ class Library :
     #end __init__
 
     def __del__(self) :
-        if self.lib.value != None :
+        if ft != None and self.lib.value != None :
             ft.FT_Done_FreeType(self.lib)
             self.lib.value = None
         #end if
