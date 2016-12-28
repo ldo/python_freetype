@@ -2414,7 +2414,7 @@ class Face :
                 }
           )
         del result["string_len"]
-        libc.free(temp.string)
+        #libc.free(temp.string) # don’t do this
         return \
             result
     #end get_sfnt_name
