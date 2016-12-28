@@ -1197,6 +1197,10 @@ ft.FT_Load_Sfnt_Table.argtypes = (ct.c_void_p, ct.c_ulong, ct.c_long, ct.c_void_
 ft.FT_Sfnt_Table_Info.argtypes = (ct.c_void_p, ct.c_uint, ct.c_void_p, ct.c_void_p)
 ft.FT_Get_TrueType_Engine_Type.argtypes = (ct.c_void_p,)
 ft.FT_Get_Gasp.argtypes = (ct.c_void_p, ct.c_uint)
+ft.FT_Get_Sfnt_Name_Count.argtypes = (ct.c_void_p,)
+ft.FT_Get_Sfnt_Name.argtypes = (ct.c_void_p, ct.c_uint, ct.c_void_p)
+ft.FT_Get_Gasp.argtypes = (ct.c_void_p, ct.c_uint)
+ft.FT_Render_Glyph.argtypes = (ct.c_void_p, ct.c_uint)
 
 if fc != None :
     fc.FcInit.restype = ct.c_bool
