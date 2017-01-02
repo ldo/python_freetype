@@ -2663,7 +2663,7 @@ CURVEPT_OFF3 = 2 # off-curve (cubic Bézier segment)
 
 class Outline :
     "Pythonic representation of an FT.Outline. Get one of these from" \
-    " GlyphSlot.outline or Outline.new()."
+    " GlyphSlot.outline, Glyph.outline or Outline.new()."
 
     __slots__ = ("_ftobj", "_lib", "owner") # to forestall typos
 
