@@ -2692,7 +2692,7 @@ class Outline :
     # <http://www.freetype.org/freetype2/docs/reference/ft2-outline_processing.html>
 
     @staticmethod
-    def new(lib) :
+    def new(lib = None) :
         "allocates a new Outline object with initially no control points or contours."
         if lib == None :
             lib = get_default_lib()
@@ -2780,7 +2780,7 @@ class Outline :
     def render \
       (
         self,
-        lib,
+        lib = None,
         target = None,
           # result will be anti-aliased greyscale if FT.RASTER_FLAG_AA is in flags,
           # else 1-bit monochrome
@@ -3265,9 +3265,15 @@ class Bitmap :
     # wrappers for FT.Bitmap functions
     # <http://www.freetype.org/freetype2/docs/reference/ft2-bitmap_handling.html>
 
-    def copy(self, lib) :
+    def copy(self, lib = None) :
         "returns a new Bitmap which is a copy of this one, with storage" \
         " allocated by the specified Library."
+        "renders the Outline into the pre-existing Bitmap."
+        if lib == None :
+            lib = get_default_lib()
+        elif not isinstance(lib, Library) :
+            raise TypeError("expecting lib to be a Library")
+        #end if
         result = ct.pointer(FT.Bitmap())
         ft.FT_Bitmap_New(result)
         check(ft.FT_Bitmap_Copy(lib.lib, self._ftobj, result))
@@ -3351,7 +3357,7 @@ class Stroker :
 
     __slots__ = ("_ftobj", "_lib") # to forestall typos
 
-    def __init__(self, lib) :
+    def __init__(self, lib = None) :
         if lib == None :
             lib = get_default_lib()
         elif not isinstance(lib, Library) :
