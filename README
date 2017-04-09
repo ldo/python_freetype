@@ -140,9 +140,9 @@ Fill or stroke it with some suitable colour or pattern, e.g.
 
 And so on.
 
-For some example scripts, see my
-[python_freetype_examples](https://github.com/ldo/python_freetype_examples)
-repository.
+For some example scripts, see my python_freetype_examples repository
+([GitLab](https://gitlab.com/ldo/python_freetype_examples),
+[GitHub](https://github.com/ldo/python_freetype_examples)).
 
 Vectors And Matrices
 ====================
@@ -165,4 +165,4 @@ These objects are automatically converted to the underlying FreeType
 types, with the right scaling, where appropriate.
 
 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
-2016 November 27
+2017 April 9
