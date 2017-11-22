@@ -42,11 +42,23 @@ try :
     import cairo
 except ImportError :
     cairo = None
+import sys
 #end try
 
-ft = ct.cdll.LoadLibrary("libfreetype.so.6")
+if sys.platform == 'win32':
+    ft = ct.cdll.LoadLibrary('freetype6.dll')
+elif sys.platform == 'darwin':
+    ft = ct.cdll.LoadLibrary('libfreetype.6.dylib')
+else:
+    ft = ct.cdll.LoadLibrary("libfreetype.so.6")
+
 try :
-    fc = ct.cdll.LoadLibrary("libfontconfig.so.1")
+    if sys.platform == 'win32':
+        fc = ct.cdll.LoadLibrary('libfontconfig-1.dll')
+    elif sys.platform == 'darwin':
+        fc = ct.cdll.LoadLibrary('libfontconfig.1.dylib')
+    else:
+        fc = ct.cdll.LoadLibrary("libfontconfig.so.1")
 except OSError as fail :
     if True : # if fail.errno == 2 : # ENOENT
       # no point checking, because it is None! (Bug?)
@@ -55,7 +67,13 @@ except OSError as fail :
         raise
     #end if
 #end try
-libc = ct.cdll.LoadLibrary("libc.so.6")
+
+if sys.platform == 'win32':
+    libc = ct.cdll.msvcrt
+elif sys.platform == 'darwin':
+    libc = ct.cdll.LoadLibrary('libSystem.dylib')
+else:
+    libc = ct.cdll.LoadLibrary("libc.so.6")
 
 def struct_to_dict(item, itemtype, indirect, extra_decode = None) :
     "decodes the elements of a ctypes Structure into a dict. extra_decode" \
