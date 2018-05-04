@@ -103,11 +103,41 @@ class FT :
 
     Encoding = ct.c_uint
 
-    def ENC_TAG(tag) :
-        "converts tag, which must be a four-byte string, into an integer suitable" \
-        " as an Encoding value."
-        return struct.unpack(">I", tag.encode("ascii"))[0]
+    def ENC_TAG(*args) :
+        "creates an Encoding or Glyph_Format value from four byte values" \
+        " or a bytes or str value of length 4."
+        if len(args) == 4 :
+            c1, c2, c3, c4 = args
+        elif len(args) == 1 :
+            arg = args[0]
+            if isinstance(arg, (bytes, bytearray)) :
+                c1, c2, c3, c4 = tuple(arg)
+            elif isinstance(arg, str) :
+                args = tuple(ord(c) for c in arg)
+                if len(args) != 4 or not all(i < 128 for i in args) :
+                    raise TypeError("TAG string must be 4 ASCII chars in [0 .. 255]")
+                #end if
+                c1, c2, c3, c4 = args
+            else :
+                raise TypeError("TAG arg must be bytes or string")
+            #end if
+        else :
+            raise TypeError("wrong nr of TAG args")
+        #end if
+        return \
+            c1 << 24 | c2 << 16 | c3 << 8 | c4
     #end ENC_TAG
+
+    def DEC_TAG(tag, printable = False) :
+        "decomposes an Encoding value into a tuple or bytes object of" \
+        " four byte values."
+        result = (tag >> 24 & 255, tag >> 16 & 255, tag >> 8 & 255, tag & 255)
+        if printable :
+            result = bytes(result)
+        #end if
+        return \
+            result
+    #end DEC_TAG
 
     ENCODING_NONE = ENC_TAG('\x00\x00\x00\x00')
 
@@ -138,11 +168,7 @@ class FT :
 
     Glyph_Format = ct.c_uint
 
-    def IMAGE_TAG(tag) :
-        "converts tag, which must be a four-byte string, into an integer suitable" \
-        " as a Glyph_Format value."
-        return struct.unpack(">I", tag.encode("ascii"))[0]
-    #end IMAGE_TAG
+    IMAGE_TAG = ENC_TAG
 
     GLYPH_FORMAT_NONE = IMAGE_TAG('\x00\x00\x00\x00')
 
