@@ -104,8 +104,8 @@ class FT :
     Encoding = ct.c_uint
 
     def ENC_TAG(tag) :
-        """converts tag, which must be a four-byte string, into an integer suitable
-        as an Encoding value."""
+        "converts tag, which must be a four-byte string, into an integer suitable" \
+        " as an Encoding value."
         return struct.unpack(">I", tag.encode("ascii"))[0]
     #end ENC_TAG
 
@@ -139,8 +139,8 @@ class FT :
     Glyph_Format = ct.c_uint
 
     def IMAGE_TAG(tag) :
-        """converts tag, which must be a four-byte string, into an integer suitable
-        as a Glyph_Format value."""
+        "converts tag, which must be a four-byte string, into an integer suitable" \
+        " as a Glyph_Format value."
         return struct.unpack(">I", tag.encode("ascii"))[0]
     #end IMAGE_TAG
 
