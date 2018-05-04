@@ -24,7 +24,7 @@ interface to Pycairo, if installed:
     * draw the contours of an Outline as a Path
 """
 #+
-# Copyright 2015-2016 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+# Copyright 2015-2018 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 # Dual-licensed under the FreeType licence
 # <http://git.savannah.gnu.org/cgit/freetype/freetype2.git/tree/docs/FTL.TXT>
 # and GPLv2 <http://git.savannah.gnu.org/cgit/freetype/freetype2.git/tree/docs/GPLv2.TXT>
