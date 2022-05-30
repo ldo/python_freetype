@@ -1,15 +1,17 @@
 #+
-# Distutils script to install python_freetype. Invoke from the command line
-# in this directory as follows:
+# Setuptools script to install python_freetype. Make sure setuptools
+# <https://setuptools.pypa.io/en/latest/index.html> is installed.
+# Invoke from the command line in this directory as follows:
 #
-#     python3 setup.py install
+#     python3 setup.py build
+#     sudo python3 setup.py install
 #
 # Written by Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 #-
 
-import distutils.core
+import setuptools
 
-distutils.core.setup \
+setuptools.setup \
   (
     name = "Python FreeType",
     version = "0.62",
