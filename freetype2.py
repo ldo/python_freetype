@@ -1001,6 +1001,7 @@ class Error :
     Invalid_Composite = 21
     Too_Many_Hints = 22
     Invalid_Pixel_Size = 23
+    Invalid_SVG_Document = 24
     Invalid_Handle = 32
     Invalid_Library_Handle = 33
     Invalid_Driver_Handle = 34
@@ -1055,6 +1056,9 @@ class Error :
     Could_Not_Find_Context = 153
     Invalid_Post_Table_Format = 154
     Invalid_Post_Table = 155
+    DEF_In_Glyf_Bytecode = 156
+    Missing_Bitmap = 157
+    Missing_SVG_Hooks = 158
     Syntax_Error = 160
     Stack_Underflow = 161
     Ignore = 162
@@ -1096,6 +1100,7 @@ class Error :
             21 : "invalid composite glyph",
             22 : "too many hints",
             23 : "invalid pixel size",
+            24 : "invalid SVG document",
             32 : "invalid object handle",
             33 : "invalid library handle",
             34 : "invalid module handle",
@@ -1150,6 +1155,9 @@ class Error :
             153 : "could not find context",
             154 : "invalid PostScript (post) table format",
             155 : "invalid PostScript (post) table",
+            156 : "found FDEF or IDEF opcode in glyf bytecode",
+            157 : "missing bitmap in strike",
+            158 : "SVG hooks have not been set",
             160 : "opcode syntax error",
             161 : "argument stack underflow",
             162 : "ignore",
