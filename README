@@ -142,7 +142,7 @@ And so on.
 
 For some example scripts, see my python_freetype_examples repository
 ([GitLab](https://gitlab.com/ldo/python_freetype_examples),
-[GitHub](https://github.com/ldo/python_freetype_examples)).
+[BitBucket](https://bitbucket.org/ldo17/python_freetype_examples)).
 
 Vectors And Matrices
 ====================
@@ -165,4 +165,4 @@ These objects are automatically converted to the underlying FreeType
 types, with the right scaling, where appropriate.
 
 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>
-2017 April 9
+2023 September 6
